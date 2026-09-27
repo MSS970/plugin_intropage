@@ -1,7 +1,7 @@
 <?php
 /* vim: ts=4
  +-------------------------------------------------------------------------+
- | Copyright (C) 2004-2025 The Cacti Group, Inc.                           |
+ | Copyright (C) 2004-2026 The Cacti Group, Inc.                           |
  | Copyright (C) 2004-2025 Petr Macek                                      |
  |                                                                         |
  | This program is free software; you can redistribute it and/or           |
@@ -24,16 +24,29 @@
  +-------------------------------------------------------------------------+
 */
 
+/**
+ * Registers the 'system' panel category and its 'Information',
+ * 'Administrative Alerts', 'Boost Statistics', 'Boost History', '24
+ * Hour Extremes', and 'CPU Utilization' panels with the panel library.
+ * Called from initialize_panel_library() while building the full set
+ * of available dashboard panels.
+ *
+ * @return array The panel definitions provided by this file, keyed by
+ *              panel id.
+ *
+ * @global array $registry Populated here with this file's 'system'
+ *                         category metadata.
+ */
 function register_system() {
 	global $registry;
 
-	$registry['system'] = array(
+	$registry['system'] = [
 		'name'        => __('System Panels', 'intropage'),
 		'description' => __('Panels that provide information about Cacti system performance.', 'intropage')
-	);
+	];
 
-	$panels = array(
-		'info' => array(
+	$panels = [
+		'info' => [
 			'name'         => __('Information', 'intropage'),
 			'description'  => __('Various system information about the Cacti system itself.', 'intropage'),
 			'class'        => 'system',
@@ -50,8 +63,8 @@ function register_system() {
 			'update_func'  => 'info',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'admin_alert' => array(
+		],
+		'admin_alert' => [
 			'name'         => __('Administrative Alerts', 'intropage'),
 			'description'  => __('Extra admin notify panel for all users', 'intropage'),
 			'class'        => 'system',
@@ -68,8 +81,8 @@ function register_system() {
 			'update_func'  => 'admin_alert',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'boost' => array(
+		],
+		'boost' => [
 			'name'         => __('Boost Statistics', 'intropage'),
 			'description'  => __('Information about Cacti\'s performance boost process.', 'intropage'),
 			'class'        => 'system',
@@ -86,8 +99,8 @@ function register_system() {
 			'update_func'  => 'boost',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'boost_history' => array(
+		],
+		'boost_history' => [
 			'name'         => __('Boost History', 'intropage'),
 			'description'  => __('Information about boost process history.', 'intropage'),
 			'class'        => 'system',
@@ -104,8 +117,8 @@ function register_system() {
 			'update_func'  => 'boost_history',
 			'details_func' => false,
 			'trends_func'  => 'boost_history_trend'
-		),
-		'extrem' => array(
+		],
+		'extrem' => [
 			'name'         => __('24 Hour Extremes', 'intropage'),
 			'description'  => __('Table with 24 hours of Polling Extremes (longest poller run, down hosts)', 'intropage'),
 			'class'        => 'system',
@@ -122,8 +135,8 @@ function register_system() {
 			'update_func'  => 'extrem',
 			'details_func' => 'extrem_detail',
 			'trends_func'  => 'extrem_trend'
-		),
-		'cpuload' => array(
+		],
+		'cpuload' => [
 			'name'         => __('CPU Utilization', 'intropage'),
 			'description'  => __('CPU utilization Graph (only Linux).', 'intropage'),
 			'class'        => 'system',
@@ -140,12 +153,20 @@ function register_system() {
 			'update_func'  => 'cpuload',
 			'details_func' => false,
 			'trends_func'  => 'cpuload_trend'
-		)
-	);
+		]
+	];
 
 	return $panels;
 }
 
+/**
+ * Trend-collection function for the 'cpuload' panel: records a
+ * snapshot of the server's current CPU load average (Linux only) into
+ * plugin_intropage_trends. Called from intropage_gather_stats() via
+ * the panel definition's 'trends_func'.
+ *
+ * @return void
+ */
 function cpuload_trend() {
 	if (!stristr(PHP_OS, 'win')) {
 		$load    = sys_getloadavg();
@@ -154,28 +175,44 @@ function cpuload_trend() {
 		db_execute_prepared("REPLACE INTO plugin_intropage_trends
 			(name, value, user_id)
 			VALUES ('cpuload', ?, 0)",
-			array($load[0]));
+			[$load[0]]);
 	}
 }
 
-
-//------------------------------------ cpuload -----------------------------------------------------
+// ------------------------------------ cpuload -----------------------------------------------------
+/**
+ * Data-update function for the 'cpuload' panel: renders a time-series
+ * graph of the server's CPU load average over the panel's configured
+ * timespan (Linux only). Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel    The panel's current definition/data row.
+ * @param int   $user_id  The id of the user the panel is being
+ *                        rendered for, used to resolve the timespan
+ *                        setting and save the result.
+ * @param int   $timespan Optional override for the graph's time
+ *                        window in seconds; 0 uses the user's/panel's
+ *                        configured timespan.
+ *
+ * @return void
+ */
 function cpuload($panel, $user_id, $timespan = 0) {
 	global $config;
 
 	$panel['alarm'] = 'green';
 
-	$graph = array (
-		'line' => array(
+	$graph =  [
+		'line' => [
 			'title'  => __('CPU Load: ', 'intropage'),
-			'label1' => array(),
-			'data1'  => array(),
-		),
-	);
+			'label1' => [],
+			'data1'  => [],
+		],
+	];
 
 	if ($timespan == 0) {
 		if (isset($_SESSION['sess_user_id'])) {
-			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), $_SESSION['sess_user_id']);
+			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), false, $_SESSION['sess_user_id']);
 		} else {
 			$timespan = $panel['refresh'];
 		}
@@ -185,7 +222,7 @@ function cpuload($panel, $user_id, $timespan = 0) {
 		$refresh = db_fetch_cell_prepared('SELECT refresh_interval
 			FROM plugin_intropage_panel_data
 			WHERE id = ?',
-			array($panel['id']));
+			[$panel['id']]);
 	} else {
 		$refresh = $panel['refresh'];
 	}
@@ -202,7 +239,7 @@ function cpuload($panel, $user_id, $timespan = 0) {
 			AND name = 'cpuload'
 			GROUP BY UNIX_TIMESTAMP(cur_timestamp) DIV $seconds
 			ORDER BY cur_timestamp ASC",
-			array($timespan));
+			[$timespan]);
 
 		if (cacti_sizeof($rows)) {
 			$graph['line']['title1'] = __('Avg CPU', 'intropage');
@@ -238,7 +275,19 @@ function cpuload($panel, $user_id, $timespan = 0) {
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------- info-------------------------
+// ------------------------- info-------------------------
+/**
+ * Data-update function for the 'info' panel: displays static system
+ * information about the Cacti installation (e.g. version, PHP/database
+ * versions, OS). Called from intropage_gather_stats()/get_panel() via
+ * the panel definition's 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function info($panel, $user_id) {
 	global $config, $poller_options;
 
@@ -259,17 +308,16 @@ function info($panel, $user_id) {
 			$spine_version = $out_array[0];
 		}
 
-		$panel['data'] .= '<tr><td>' . __('Poller Type:', 'intropage') .' <a class="linkEditMain" href="' . html_escape($config['url_path'] .  'settings.php?tab=poller') . '">' . __('Spine', 'intropage') . '</a></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('Poller Type:', 'intropage') . ' <a class="linkEditMain" href="' . html_escape($config['url_path'] . 'settings.php?tab=poller') . '">' . __('Spine', 'intropage') . '</a></td></tr>';
 
-		$panel['data'] .= '<tr><td>' . __('Spine version: ', 'intropage') . $spine_version . '<br/></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('Spine version: ', 'intropage') . html_escape($spine_version) . '<br/></td></tr>';
 
-		if (!strpos($spine_version, CACTI_VERSION, 0)) {
+		if (strpos($spine_version, CACTI_VERSION) === false) {
 			$panel['data'] .= '<tr><td>' . __('You are using incorrect spine version!', 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
 			$panel['alarm'] = 'red';
 		}
-
 	} else {
-		$panel['data'] .= '<tr><td>' . __('Poller Type: ', 'intropage') . ' <a class="linkEditMain" href="' . html_escape($config['url_path'] .  'settings.php?tab=poller') . '">' . $poller_options[read_config_option('poller_type')] . '</a><br/></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('Poller Type: ', 'intropage') . ' <a class="linkEditMain" href="' . html_escape($config['url_path'] . 'settings.php?tab=poller') . '">' . $poller_options[read_config_option('poller_type')] . '</a><br/></td></tr>';
 	}
 
 	if (function_exists('php_uname')) {
@@ -285,18 +333,36 @@ function info($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-//---------------------------admin alert--------------------
+// ---------------------------admin alert--------------------
+/**
+ * Data-update function for the 'admin_alert' panel: displays a
+ * configured administrative notification message to all users. Called
+ * from intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function admin_alert($panel, $user_id) {
 	global $config;
 
-	$panel['data'] .= '<div title="' . read_config_option('intropage_admin_alert') . '">' . read_config_option('intropage_admin_alert') . '</div>';
+	$panel['data'] .= '<div title="' . html_escape(read_config_option('intropage_admin_alert')) . '">' . html_escape(read_config_option('intropage_admin_alert')) . '</div>';
 
 	save_panel_result($panel, $user_id);
 }
 
-
+/**
+ * Trend-collection function for the 'boost_history' panel: records a
+ * snapshot of Boost plugin processing statistics (e.g. pending item
+ * count) into plugin_intropage_trends. Called from
+ * intropage_gather_stats() via the panel definition's 'trends_func'.
+ *
+ * @return void
+ */
 function boost_history_trend() {
-
 	$data_length = db_fetch_cell("SELECT data_length
 		FROM INFORMATION_SCHEMA.TABLES WHERE table_schema=SCHEMA()
 		AND (table_name LIKE 'poller_output_boost_arch_%' OR table_name LIKE 'poller_output_boost')");
@@ -304,7 +370,7 @@ function boost_history_trend() {
 	db_execute_prepared('INSERT INTO plugin_intropage_trends
 		(name, value, user_id)
 		VALUES ("boost_mem_size", ?, 0)',
-		array($data_length));
+		[$data_length]);
 
 	$boost_table_status = db_fetch_assoc("SELECT *
 		FROM INFORMATION_SCHEMA.TABLES WHERE table_schema=SCHEMA()
@@ -326,28 +392,44 @@ function boost_history_trend() {
 	db_execute_prepared('INSERT INTO plugin_intropage_trends
 		(name, value, user_id)
 		VALUES ("boost_pending", ?, 0)',
-		array($pending_records));
+		[$pending_records]);
 }
 
-
+/**
+ * Data-update function for the 'boost_history' panel: renders a
+ * time-series graph of Boost processing history over the panel's
+ * configured timespan from the recorded trend snapshots. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel    The panel's current definition/data row.
+ * @param int   $user_id  The id of the user the panel is being
+ *                        rendered for, used to resolve the timespan
+ *                        setting and save the result.
+ * @param int   $timespan Optional override for the graph's time
+ *                        window in seconds; 0 uses the user's/panel's
+ *                        configured timespan.
+ *
+ * @return void
+ */
 function boost_history($panel, $user_id, $timespan = 0) {
 	global $config;
 
 	$panel['alarm'] = 'green';
 
-	$graph = array (
-		'line' => array(
+	$graph =  [
+		'line' => [
 			'title'  => __('Boost history: ', 'intropage'),
-			'label1' => array(),
-			'data1'  => array(),
-			'label2' => array(),
-			'data2'  => array(),
-		),
-	);
+			'label1' => [],
+			'data1'  => [],
+			'label2' => [],
+			'data2'  => [],
+		],
+	];
 
 	if ($timespan == 0) {
 		if (isset($_SESSION['sess_user_id'])) {
-			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), $_SESSION['sess_user_id']);
+			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), false, $_SESSION['sess_user_id']);
 		} else {
 			$timespan = $panel['refresh'];
 		}
@@ -357,7 +439,7 @@ function boost_history($panel, $user_id, $timespan = 0) {
 		$refresh = db_fetch_cell_prepared('SELECT refresh_interval
 			FROM plugin_intropage_panel_data
 			WHERE id = ?',
-			array($panel['id']));
+			[$panel['id']]);
 	} else {
 		$refresh = $panel['refresh'];
 	}
@@ -367,15 +449,15 @@ function boost_history($panel, $user_id, $timespan = 0) {
 		WHERE cur_timestamp > date_sub(NOW(), INTERVAL ? SECOND)
 		AND name = 'boost_mem_size'
 		ORDER BY cur_timestamp ASC",
-		array($timespan));
+		[$timespan]);
 
 	if (cacti_sizeof($rows)) {
-		$graph['line']['title1'] = __('Mem ', 'intropage');
+		$graph['line']['title1']         = __('Mem ', 'intropage');
 		$graph['line']['unit1']['title'] = 'Used mem [KB]';
 
 		foreach ($rows as $row) {
 			$graph['line']['label1'][] = $row['date'];
-			$graph['line']['data1'][]  = $row['value']/1024;
+			$graph['line']['data1'][]  = $row['value'] / 1024;
 		}
 
 		$rows = db_fetch_assoc_prepared("SELECT cur_timestamp AS `date`, value
@@ -383,10 +465,10 @@ function boost_history($panel, $user_id, $timespan = 0) {
 			WHERE cur_timestamp > date_sub(NOW(), INTERVAL ? SECOND)
 			AND name = 'boost_pending'
 			ORDER BY cur_timestamp ASC",
-			array($timespan));
+			[$timespan]);
 
 		if (cacti_sizeof($rows)) {
-			$graph['line']['title2'] = __('Pending records ', 'intropage');
+			$graph['line']['title2']         = __('Pending records ', 'intropage');
 			$graph['line']['unit2']['title'] = 'Records';
 
 			foreach ($rows as $row) {
@@ -409,8 +491,19 @@ function boost_history($panel, $user_id, $timespan = 0) {
 	save_panel_result($panel, $user_id);
 }
 
-
-//--------------------------------boost--------------------------------
+// --------------------------------boost--------------------------------
+/**
+ * Data-update function for the 'boost' panel: summarizes the current
+ * Boost plugin queue/processing state (e.g. items pending, memory
+ * usage). Called from intropage_gather_stats()/get_panel() via the
+ * panel definition's 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function boost($panel, $user_id) {
 	global $config, $boost_refresh_interval, $boost_max_runtime;
 
@@ -427,7 +520,7 @@ function boost($panel, $user_id) {
 	$parallel        = read_config_option('boost_parallel', true);
 	$detail_stats    = read_config_option('stats_detail_boost', true);
 
-	/* get the boost table status */
+	// get the boost table status
 	$boost_table_status = db_fetch_assoc("SELECT *
 		FROM INFORMATION_SCHEMA.TABLES WHERE table_schema=SCHEMA()
 		AND (table_name LIKE 'poller_output_boost_arch_%' OR table_name LIKE 'poller_output_boost')");
@@ -437,7 +530,7 @@ function boost($panel, $user_id) {
 	$data_length     = 0;
 	$engine          = '';
 	$max_data_length = 0;
-	$total_records  = 0;
+	$total_records   = 0;
 
 	if (cacti_sizeof($boost_table_status)) {
 		foreach ($boost_table_status as $table) {
@@ -474,12 +567,12 @@ function boost($panel, $user_id) {
 			$boost_status_text = __('Running', 'intropage');
 		} elseif (substr_count($boost_status_array[0], 'overrun')) {
 			$boost_status_text = __('Overrun Warning', 'intropage');
-			$panel['alarm']   = 'red';
+			$panel['alarm']    = 'red';
 		} elseif (substr_count($boost_status_array[0], 'timeout')) {
 			$boost_status_text = __('Timed Out', 'intropage');
-			$panel['alarm']   = 'red';
+			$panel['alarm']    = 'red';
 		} else {
-			$boost_status_text = __('Other');
+			$boost_status_text = __('Other', 'intropage');
 		}
 	} else {
 		$boost_status_text = __('Never Run', 'intropage');
@@ -507,7 +600,7 @@ function boost($panel, $user_id) {
 
 	$panel['data'] .= '<tr><td><hr></td></tr>';
 
-	$panel['data'] .= '<tr><td>' . __('Processes/Frequency: %s / %s', number_format_i18n($parallel, -1), $rrd_updates == '' ? __('N/A') : $boost_refresh_interval[$update_int], 'intropage') . '</td></tr>';
+	$panel['data'] .= '<tr><td>' . __('Processes/Frequency: %s / %s', number_format_i18n($parallel, -1), $rrd_updates == '' ? __('N/A', 'intropage') : $boost_refresh_interval[$update_int], 'intropage') . '</td></tr>';
 
 	$panel['data'] .= '<tr><td>' . __('Pending Records Threshold: %s', number_format_i18n($max_records, -1), 'intropage') . '</td></tr>';
 
@@ -531,16 +624,16 @@ function boost($panel, $user_id) {
 
 	$panel['data'] .= '<tr><td><hr></td></tr>';
 
-	/* tell the user how big the table is */
+	// tell the user how big the table is
 	$panel['data'] .= '<tr><td>' . __('Current Boost Table(s) Size: %s', human_filesize($data_length), 'intropage') . '</td></tr>';
 
-	/* tell the user about the average size/record */
+	// tell the user about the average size/record
 	$panel['data'] .= '<tr><td>' . __('Avg Bytes/Record: %s', human_filesize($avg_row_length), 'intropage') . '</td></tr>';
 
 	if (is_numeric($boost_last_run_duration)) {
 		$lastduration = $boost_last_run_duration . ' s';
 	} else {
-		$lastduration = __('N/A');
+		$lastduration = __('N/A', 'intropage');
 	}
 
 	$panel['data'] .= '<tr><td><hr></td></tr>';
@@ -552,21 +645,28 @@ function boost($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
+/**
+ * Trend-collection function for the 'extrem' panel: records a snapshot
+ * of 24-hour polling extremes (e.g. longest poller run time, down host
+ * counts) into plugin_intropage_trends. Called from
+ * intropage_gather_stats() via the panel definition's 'trends_func'.
+ *
+ * @return void
+ */
 function extrem_trend() {
 	// update in poller
 	$users = get_user_list();
 
 	foreach ($users as $user) {
 		if (is_panel_allowed('extrem', $user['id'])) {
-
 			$simple_perms = get_simple_device_perms($user['id']);
 
 			if (!$simple_perms) {
 				$allowed_devices = intropage_get_allowed_devices($user['id']);
-				$host_cond = 'IN (' . $allowed_devices . ')';
+				$host_cond       = 'IN (' . $allowed_devices . ')';
 			} else {
 				$allowed_devices = false;
-				$q_host_cond = '';
+				$q_host_cond     = '';
 			}
 
 			if (!$simple_perms) {
@@ -581,7 +681,7 @@ function extrem_trend() {
 				db_execute_prepared('INSERT INTO plugin_intropage_trends
 					(name, value, user_id)
 					VALUES (?, ?, ?)',
-					array('failed_polls', $count, $user['id']));
+					['failed_polls', $count, $user['id']]);
 			}
 
 			if (db_table_exists('host_errors')) {
@@ -592,13 +692,27 @@ function extrem_trend() {
 				db_execute_prepared('INSERT INTO plugin_intropage_trends
 					(name, value, user_id)
 					VALUES (?, ?, ?)',
-					array('host_errors', $count, $user['id']));
+					['host_errors', $count, $user['id']]);
 			}
 		}
 	}
 }
 
-//------------------------------------ extrem -----------------------------------------------------
+// ------------------------------------ extrem -----------------------------------------------------
+/**
+ * Data-update function for the 'extrem' panel: renders a table of the
+ * last 24 hours' polling extremes (longest poller runs, down host
+ * events) from the recorded trend snapshots. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to determine the row limit and save
+ *                       the result.
+ *
+ * @return void
+ */
 function extrem($panel, $user_id) {
 	global $config;
 
@@ -608,9 +722,9 @@ function extrem($panel, $user_id) {
 
 	$panel['alarm'] = 'grey';
 
-	$columns = array();
-	$data   = array();
-	$fin_data   = array();
+	$columns    = [];
+	$data       = [];
+	$fin_data   = [];
 
 	$console_access = get_console_access($user_id);
 
@@ -627,9 +741,9 @@ function extrem($panel, $user_id) {
 
 		if (cacti_sizeof($data)) {
 			foreach ($data as $key => $row) {
-				if (($row['xvalue']/$poller_interval) > 0.9) {
+				if (($row['xvalue'] / $poller_interval) > 0.9) {
 					$color = 'red';
-				} elseif (($row['xvalue']/$poller_interval) > 0.7) {
+				} elseif (($row['xvalue'] / $poller_interval) > 0.7) {
 					$color = 'yellow';
 				} else {
 					$color = 'green';
@@ -650,11 +764,10 @@ function extrem($panel, $user_id) {
 		AND cur_timestamp > date_sub(now(),interval 1 day)
 		ORDER BY value desc,cur_timestamp
 		LIMIT $lines",
-		array($user_id));
+		[$user_id]);
 
 	if (cacti_sizeof($data)) {
 		foreach ($data as $key => $row) {
-
 			if ($row['value'] > 0) {
 				$color = 'red';
 			} else {
@@ -676,7 +789,7 @@ function extrem($panel, $user_id) {
 			AND cur_timestamp > date_sub(now(),interval 1 day)
 			ORDER BY value desc,cur_timestamp
 			LIMIT $lines",
-			array($user_id));
+			[$user_id]);
 
 		if (cacti_sizeof($data)) {
 			foreach ($data as $key => $row) {
@@ -711,7 +824,6 @@ function extrem($panel, $user_id) {
 				}
 
 				$fin_data[$key]['pout'] = $row['date'] . ' ' . $row['value'] . ' <span class="inpa_sq color_' . $color . '"></span>';
-
 			}
 		}
 	}
@@ -764,18 +876,19 @@ function extrem($panel, $user_id) {
 		// Create table from data
 		$panel['data'] = '<table class="cactiTable"><tr class="tableHeader">';
 
-		foreach($columns as $col) {
+		foreach ($columns as $col) {
 			$panel['data'] .= '<th class="right">' . $col . '</th>';
 		}
 
 		$panel['data'] .= '</tr>';
 
 		$i = 0;
-		foreach($fin_data as $key => $rdata) {
-			$panel['data'] .= '<tr class="' . ($i % 2 == 0 ? 'even':'odd') . '">';
 
-			foreach($columns as $index => $col) {
-				$panel['data'] .= '<td class="right">' . (isset($rdata[$index]) ? $rdata[$index]:'-') . '</td>';
+		foreach ($fin_data as $key => $rdata) {
+			$panel['data'] .= '<tr class="' . ($i % 2 == 0 ? 'even' : 'odd') . '">';
+
+			foreach ($columns as $index => $col) {
+				$panel['data'] .= '<td class="right">' . (isset($rdata[$index]) ? $rdata[$index] : '-') . '</td>';
 			}
 
 			$panel['data'] .= '</tr>';
@@ -785,26 +898,35 @@ function extrem($panel, $user_id) {
 
 		$panel['data'] .= '</table>';
 	} else {
-		$panel['data'] .=  __('Waiting for data', 'intropage');
+		$panel['data'] .= __('Waiting for data', 'intropage');
 	}
 
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------------------ extrem -----------------------------------------------------
+// ------------------------------------ extrem -----------------------------------------------------
+/**
+ * Detail-view renderer for the 'extrem' panel, showing an expanded
+ * view of the 48-hour polling extremes. Called via the panel
+ * definition's 'details_func' when the user opens the panel's detail
+ * view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function extrem_detail() {
 	global $config, $console_access;
 
 	$poller_interval = read_config_option('poller_interval');
 
-	$panel = array(
+	$panel = [
 		'name'   => __('48 Hour Extreme Polling', 'intropage'),
 		'alarm'  => 'grey',
 		'detail' => '',
-	);
+	];
 
-	$trows   = array();
-	$header  = array();
+	$trows   = [];
+	$header  = [];
 
 	$panel['detail'] .= '<table class="cactiTable">' .
 		'<tr class="tableHeader">';
@@ -820,18 +942,19 @@ function extrem_detail() {
 			LIMIT 25");
 
 		if (cacti_sizeof($data)) {
-			$j = 0;
+			$j        = 0;
 			$header[] = __('Long Running Poller', 'intropage');
 
 			$i = 0;
+
 			foreach ($data as $row) {
-	                        if (($row['xvalue']/$poller_interval) > 0.9) {
-        	                        $color = 'red';
-                	        } elseif (($row['xvalue']/$poller_interval) > 0.7) {
-                        	        $color = 'yellow';
-                        	} else {
-                        		$color = 'green';
-                        	}
+				if (($row['xvalue'] / $poller_interval) > 0.9) {
+					$color = 'red';
+				} elseif (($row['xvalue'] / $poller_interval) > 0.7) {
+					$color = 'yellow';
+				} else {
+					$color = 'green';
+				}
 
 				$trows[$i][$j] = $row['date'] . ' ' . $row['xvalue'] . 's <span class="inpa_sq color_' . $color . '"></span>';
 				$i++;
@@ -840,14 +963,14 @@ function extrem_detail() {
 	}
 
 	// max host down
-	$data = db_fetch_assoc_prepared ("SELECT date_format(cur_timestamp,'%d.%m. %H:%i') AS `date`, value
+	$data = db_fetch_assoc_prepared("SELECT date_format(cur_timestamp,'%d.%m. %H:%i') AS `date`, value
 		FROM plugin_intropage_trends
 		WHERE name='host_down'
 		AND user_id =  ?
 		AND cur_timestamp > date_sub(now(),interval 2 day)
 		ORDER BY value desc,cur_timestamp
 		LIMIT 25",
-		array($_SESSION['sess_user_id']));
+		[$_SESSION['sess_user_id']]);
 
 	if (cacti_sizeof($data)) {
 		$j++;
@@ -855,6 +978,7 @@ function extrem_detail() {
 		$header[] = __('Max Device Down', 'intropage');
 
 		$i = 0;
+
 		foreach ($data as $row) {
 			if ($row['value'] > 0) {
 				$color = 'red';
@@ -869,7 +993,6 @@ function extrem_detail() {
 	}
 
 	if (api_plugin_is_enabled('thold')) {
-
 		$data = db_fetch_assoc_prepared("SELECT date_format(cur_timestamp,'%d.%m. %H:%i') AS `date`, value
 			FROM plugin_intropage_trends
 			WHERE name='thold_trig'
@@ -877,7 +1000,7 @@ function extrem_detail() {
 			AND cur_timestamp > date_sub(now(), interval 2 day)
 			ORDER BY value desc,cur_timestamp
 			LIMIT 25",
-			array($_SESSION['sess_user_id']));
+			[$_SESSION['sess_user_id']]);
 
 		if (cacti_sizeof($data)) {
 			$j++;
@@ -885,6 +1008,7 @@ function extrem_detail() {
 			$header[] = __('Max Thold Triggered', 'intropage');
 
 			$i = 0;
+
 			foreach ($data as $row) {
 				if ($row['value'] > 0) {
 					$color = 'red';
@@ -914,6 +1038,7 @@ function extrem_detail() {
 			$header[] = __('Poller Output Item', 'intropage');
 
 			$i = 0;
+
 			foreach ($data as $row) {
 				if ($row['value'] > 0) {
 					$color = 'red';
@@ -921,7 +1046,7 @@ function extrem_detail() {
 					$color = 'green';
 				}
 
-				$trows[$i][$j] = $row['date'] . ' ' . $row['value'] . ' <span class="inpa_sq color_' . $color .'"></span>';
+				$trows[$i][$j] = $row['date'] . ' ' . $row['value'] . ' <span class="inpa_sq color_' . $color . '"></span>';
 				$i++;
 			}
 		}
@@ -934,7 +1059,7 @@ function extrem_detail() {
 			AND cur_timestamp > date_sub(now(),interval 2 day)
 			ORDER BY value desc,cur_timestamp
 			LIMIT 25",
-			array($_SESSION['sess_user_id']));
+			[$_SESSION['sess_user_id']]);
 
 		if (cacti_sizeof($data)) {
 			$j++;
@@ -942,28 +1067,29 @@ function extrem_detail() {
 			$header[] = __('Failed Polls', 'intropage');
 
 			$i = 0;
+
 			foreach ($data as $row) {
 				$trows[$i][$j] = $row['date'] . ' ' . $row['value'];
 				$i++;
 			}
 		}
-		
+
 		// host poller errros
 		if (db_table_exists('host_errors')) {
-
 			$data = db_fetch_assoc("SELECT date_format(time(cur_timestamp),'%H:%i') AS `date`, value
 				FROM plugin_intropage_trends
 				WHERE name = 'host_errors'
 				AND cur_timestamp > date_sub(now(), interval 1 day)
 				ORDER BY value desc, cur_timestamp
-				LIMIT $lines");
+				LIMIT 25");
 
 			if (cacti_sizeof($data)) {
-				$f++;
+				$j++;
 
 				$header[] = __('Host errors', 'intropage');
 
 				$i = 0;
+
 				foreach ($data as $row) {
 					if ($row['value'] > 0) {
 						$color = 'red';
@@ -971,23 +1097,24 @@ function extrem_detail() {
 						$color = 'green';
 					}
 
-					$trows[$i][$j] = $row['date'] . ' ' . $row['value'] . ' <span class="inpa_sq color_' . $color .'"></span>';
+					$trows[$i][$j] = $row['date'] . ' ' . $row['value'] . ' <span class="inpa_sq color_' . $color . '"></span>';
 					$i++;
 				}
 			}
 		}
 	}
 
-	foreach($header as $h) {
+	foreach ($header as $h) {
 		$panel['detail'] .= '<th class="left">' . $h . '</th>';
 	}
 
 	$panel['detail'] .= '</tr>';
 
-	for($k = 0; $k < $i; $k++) {
+	for ($k = 0; $k < $i; $k++) {
 		$panel['detail'] .= '<tr>';
-		for($l = 0; $l <= $j; $l++) {
-			$panel['detail'] .= '<td class="left">' . (isset($trows[$k][$l]) ? $trows[$k][$l]:__('N/A', 'intropage')) . '</td>';
+
+		for ($l = 0; $l <= $j; $l++) {
+			$panel['detail'] .= '<td class="left">' . (isset($trows[$k][$l]) ? $trows[$k][$l] : __('N/A', 'intropage')) . '</td>';
 		}
 
 		$panel['detail'] .= '</tr>';
@@ -997,4 +1124,3 @@ function extrem_detail() {
 
 	return $panel;
 }
-

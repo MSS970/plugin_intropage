@@ -2,11 +2,15 @@
 
 --- develop ---
 
+* security: Escape panel output (device, data-source, service-check, webseer, maint, host-description and admin-alert values, and the shared-dashboard name) that was rendered without html_escape
+* issue: Fix correctness bugs in the extrem, alert, top5, thold and syslog panels and the settings action handler
+
 * issue#318: Fix NTP time does not function in Windows environment
 * issue#316: Fix php error when db check skip huge db
 * issue#327: Move Timespan from action menu
 * issue#330: Fix cannot add favourite graph to dashboard
 * issue#344: Fix navigation
+* issue#369: Fix invalid paths in plugin_hooks
 * issue: Fix support for Cacti 1.3+
 * issue: Intropage was not remembering the users desired panel order
 * issue: When 'Important First' is set, do a full refresh
@@ -19,6 +23,8 @@
 * feature#335: Add CPU cores/processes information
 * feature#341: Add info about disabled notify admin 
 * feature#350: Add poller host errors (Cacti 1.3+)
+* Add CI workflow and Custom Agents
+* issue: Fix servcheck plugin panel 
 
 --- 4.0.4 ---
 
@@ -415,4 +421,4 @@
 * Beginning
 
 -----------------------------------------------
-Copyright (c) 2004-2025 - The Cacti Group, Inc.
+Copyright (c) 2004-2026 - The Cacti Group, Inc.

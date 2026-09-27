@@ -1,7 +1,7 @@
 <?php
 /* vim: ts=4
  +-------------------------------------------------------------------------+
- | Copyright (C) 2004-2025 The Cacti Group, Inc.                           |
+ | Copyright (C) 2004-2026 The Cacti Group, Inc.                           |
  | Copyright (C) 2004-2025 Petr Macek                                      |
  |                                                                         |
  | This program is free software; you can redistribute it and/or           |
@@ -24,16 +24,28 @@
  +-------------------------------------------------------------------------+
 */
 
+/**
+ * Registers the 'misc' panel category and its 'NTP/DNS Status', 'Maint
+ * Plugin Details', 'Webseer Details', and 'Servcheck plugin Details'
+ * panels with the panel library. Called from initialize_panel_library()
+ * while building the full set of available dashboard panels.
+ *
+ * @return array The panel definitions provided by this file, keyed by
+ *              panel id.
+ *
+ * @global array $registry Populated here with this file's 'misc'
+ *                         category metadata.
+ */
 function register_misc() {
 	global $registry;
 
-	$registry['misc'] = array(
+	$registry['misc'] = [
 		'name'        => __('Miscellaneous Panels', 'intropage'),
 		'description' => __('Panels that general non-categorized data about Cacti\'s.', 'intropage')
-	);
+	];
 
-	$panels = array(
-		'ntp_dns' => array(
+	$panels = [
+		'ntp_dns' => [
 			'name'         => __('NTP/DNS Status', 'intropage'),
 			'description'  => __('Checking your Cacti system clock for drift from a known baseline and DNS resolving check', 'intropage'),
 			'class'        => 'misc',
@@ -50,8 +62,8 @@ function register_misc() {
 			'update_func'  => 'ntp_dns',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'maint' => array(
+		],
+		'maint' => [
 			'name'         => __('Maint Plugin Details', 'intropage'),
 			'description'  => __('Maint Plugin details on upcoming schedules', 'intropage'),
 			'class'        => 'misc',
@@ -68,8 +80,8 @@ function register_misc() {
 			'update_func'  => 'maint',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'webseer' => array(
+		],
+		'webseer' => [
 			'name'         => __('Webseer Details', 'intropage'),
 			'description'  => __('Plugin webseer URL Service Check Details', 'intropage'),
 			'class'        => 'misc',
@@ -86,8 +98,8 @@ function register_misc() {
 			'update_func'  => 'webseer',
 			'details_func' => 'webseer_detail',
 			'trends_func'  => false
-		),
-		'servcheck' => array(
+		],
+		'servcheck' => [
 			'name'         => __('Servcheck plugin Details', 'intropage'),
 			'description'  => __('Plugin ServCheck Details', 'intropage'),
 			'class'        => 'misc',
@@ -104,13 +116,30 @@ function register_misc() {
 			'update_func'  => 'servcheck',
 			'details_func' => 'servcheck_detail',
 			'trends_func'  => false
-		),
-	);
+		],
+	];
 
 	return $panels;
 }
 
 // -------------------------------------ntp_dns-------------------------------------------
+/**
+ * Data-update function for the 'ntp_dns' panel: checks the Cacti
+ * server's system clock drift against a configured NTP server and
+ * verifies DNS resolution of a configured hostname, reporting the
+ * results. Called from intropage_gather_stats()/get_panel() via the
+ * panel definition's 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ *
+ * @global array $config Reserved/declared for parity with other panel
+ *                       functions in this file; not used directly
+ *                       here.
+ */
 function ntp_dns($panel, $user_id) {
 	global $config;
 
@@ -122,15 +151,16 @@ function ntp_dns($panel, $user_id) {
 
 	if (empty($ntp_server)) {
 		$panel['alarm'] = 'grey';
-		$panel['data']  .= '<tr><td>' . __('No NTP server configured', 'intropage') . '<span class="inpa_sq color_grey"></span></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('No NTP server configured', 'intropage') . '<span class="inpa_sq color_grey"></span></td></tr>';
 	} elseif (!filter_var(trim($ntp_server), FILTER_VALIDATE_IP) && !filter_var(trim($ntp_server), FILTER_VALIDATE_DOMAIN)) {
 		$panel['alarm'] = 'red';
-		$panel['data']  .= '<tr><td>' . __('Wrong NTP server configured - %s<br/>Please fix it in settings', $ntp_server, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('Wrong NTP server configured - %s<br/>Please fix it in settings', $ntp_server, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
 	} else {
 		$i = 0;
 
 		while (true) {
 			$timestamp = ntp_time($ntp_server);
+
 			if (is_numeric($timestamp)) {
 				break;
 			} else {
@@ -139,6 +169,7 @@ function ntp_dns($panel, $user_id) {
 
 			if ($i > 2) {
 				$timestamp = 'error';
+
 				break;
 			}
 		}
@@ -165,36 +196,36 @@ function ntp_dns($panel, $user_id) {
 			}
 		} else {
 			$panel['alarm'] = 'red';
-			$panel['data']  .= '<tr><td>' . __('Unable to contact the NTP server indicated.', 'intropage') . '</td></tr>';
-			$panel['data']  .= '<tr><td>' . 'Server: ' . $ntp_server . '</td></tr>';
+			$panel['data'] .= '<tr><td>' . __('Unable to contact the NTP server indicated.', 'intropage') . '</td></tr>';
+			$panel['data'] .= '<tr><td>' . 'Server: ' . $ntp_server . '</td></tr>';
 
-			$panel['data']  .= '<tr><td>' . 'Timestamp: ' . $timestamp . '</td></tr>';
-			$panel['data']  .= '<tr><td>' . __('Please check your configuration.', 'intropage') . '</td></tr>';
+			$panel['data'] .= '<tr><td>' . 'Timestamp: ' . $timestamp . '</td></tr>';
+			$panel['data'] .= '<tr><td>' . __('Please check your configuration.', 'intropage') . '</td></tr>';
 		}
 	}
 
-	$panel['data']  .= '<tr><td colspan="2"><br/><br/></td></tr>';
+	$panel['data'] .= '<tr><td colspan="2"><br/><br/></td></tr>';
 
 	if (empty($dns_host)) {
 		$panel['alarm'] = 'grey';
-		$panel['data']  .= '<tr><td>' . __('No DNS hostname configured', 'intropage') . '<span class="inpa_sq color_grey"></span></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('No DNS hostname configured', 'intropage') . '<span class="inpa_sq color_grey"></span></td></tr>';
 	} elseif (!filter_var(trim($dns_host), FILTER_VALIDATE_DOMAIN)) {
 		$panel['alarm'] = 'red';
-		$panel['data']  .= '<tr><td>' . __('Wrong DNS hostname configured - %s<br/>Please fix it in settings', $dns_host, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
+		$panel['data'] .= '<tr><td>' . __('Wrong DNS hostname configured - %s<br/>Please fix it in settings', $dns_host, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
 	} else {
 		$start = microtime(true);
 
 		$dns_response = cacti_gethostinfo($dns_host, DNS_A | DNS_CNAME | DNS_AAAA);
 
-		$total_time = 1000*(microtime(true) - $start);
+		$total_time = 1000 * (microtime(true) - $start);
 
 		if ($dns_response) {
 			$panel['data'] .= '<tr><td>' . __('DNS hostname (%s) resolving ok.', $dns_host, 'intropage') . '</td></tr>';
 			$panel['data'] .= '<tr><td>' . __('DNS resolv time: %s ms', round($total_time,2), 'intropage') . '</td></tr>';
 		} else {
 			$panel['alarm'] = 'red';
-			$panel['data']  .= '<tr><td>' . __('DNS hostname (%s) resolving failed.', $dns_host, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
-			$panel['data']  .= '<tr><td>' . __('Please check your configuration.', 'intropage') . '</td></tr>';
+			$panel['data'] .= '<tr><td>' . __('DNS hostname (%s) resolving failed.', $dns_host, 'intropage') . '<span class="inpa_sq color_red"></span></td></tr>';
+			$panel['data'] .= '<tr><td>' . __('Please check your configuration.', 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -203,25 +234,38 @@ function ntp_dns($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-//---------------------------maint plugin--------------------
+// ---------------------------maint plugin--------------------
+/**
+ * Data-update function for the 'maint' panel: lists upcoming
+ * maintenance windows from the Maint plugin, or reports that the Maint
+ * plugin isn't installed. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to determine the row limit and save
+ *                       the result.
+ *
+ * @return void
+ */
 function maint($panel, $user_id) {
 	global $config;
 
 	$panel['alarm'] = 'green';
-	$panel['data'] = '';
+	$panel['data']  = '';
 
 	$maint_days_before = read_config_option('intropage_maint_plugin_days_before');
 
 	if (api_plugin_is_enabled('maint') && $maint_days_before >= 0) {
-
 		$simple_perms = get_simple_device_perms($user_id);
 
 		if (!$simple_perms) {
 			$allowed_devices = intropage_get_allowed_devices($_SESSION['sess_user_id']);
-			$host_cond = 'IN (' . $allowed_devices . ')';
+			$host_cond       = 'IN (' . $allowed_devices . ')';
 		} else {
 			$allowed_devices = false;
-			$q_host_cond = '';
+			$q_host_cond     = '';
 		}
 
 		if (!$simple_perms) {
@@ -238,67 +282,66 @@ function maint($panel, $user_id) {
 					$t = time();
 
 					switch ($sc['mtype']) {
-					case 1:
-						if ($t > ($sc['stime'] - $maint_days_before) && $t < $sc['etime']) {
-							$hosts = db_fetch_assoc_prepared("SELECT description FROM host
+						case 1:
+							if ($t > ($sc['stime'] - $maint_days_before) && $t < $sc['etime']) {
+								$hosts = db_fetch_assoc_prepared("SELECT description FROM host
 								INNER JOIN plugin_maint_hosts
 								ON host.id=plugin_maint_hosts.host
 								WHERE schedule = ?
 								$q_host_cond",
-								array($sc['id']));
+									[$sc['id']]);
 
-							if (cacti_sizeof($hosts)) {
-								$panel['data'] .= '<b>' . date('d. m . Y  H:i', $sc['stime']) .
-									' - ' . date('d. m . Y  H:i', $sc['etime']) .
-									' - ' . $sc['name'] . ' (One time)<br/>';
+								if (cacti_sizeof($hosts)) {
+									$panel['data'] .= '<b>' . date('d. m . Y  H:i', $sc['stime']) .
+										' - ' . date('d. m . Y  H:i', $sc['etime']) .
+										' - ' . html_escape($sc['name']) . ' (One time)<br/>';
 
-								$text = 'Affected hosts:</b> ' . implode (', ', array_column($hosts,'description'));
+									$text = 'Affected hosts:</b> ' . implode(', ', array_map('html_escape', array_column($hosts, 'description')));
 
-								$panel['data'] .= '<div class="inpa_loglines" title="' . $text . '">' . $text . '</div><br/><br/>';
-
-							}
-						}
-
-						break;
-					case 2:
-						/* past, calculate next */
-						if ($sc['etime'] < $t) {
-							/* convert start and end to local so that hour stays same for add days across daylight saving time change */
-							$starttimelocal = (new DateTime('@' . strval($sc['stime'])))->setTimezone( new DateTimeZone( date_default_timezone_get()));
-							$endtimelocal   = (new DateTime('@' . strval($sc['etime'])))->setTimezone( new DateTimeZone( date_default_timezone_get()));
-							$nowtime        = new DateTime();
-							/* add interval days */
-							$addday = new DateInterval( 'P' . strval($sc['minterval'] / 86400) . 'D');
-							while ($endtimelocal < $nowtime) {
-								$starttimelocal = $starttimelocal->add( $addday );
-								$endtimelocal   = $endtimelocal->add( $addday );
+									$panel['data'] .= '<div class="inpa_loglines" title="' . $text . '">' . $text . '</div><br/><br/>';
+								}
 							}
 
-							$sc['stime'] = $starttimelocal->getTimestamp();
-							$sc['etime'] = $endtimelocal->getTimestamp();
-						}
+							break;
+						case 2:
+							// past, calculate next
+							if ($sc['etime'] < $t) {
+								// convert start and end to local so that hour stays same for add days across daylight saving time change
+								$starttimelocal = (new DateTime('@' . strval($sc['stime'])))->setTimezone(new DateTimeZone(date_default_timezone_get()));
+								$endtimelocal   = (new DateTime('@' . strval($sc['etime'])))->setTimezone(new DateTimeZone(date_default_timezone_get()));
+								$nowtime        = new DateTime();
+								// add interval days
+								$addday = new DateInterval('P' . strval($sc['minterval'] / 86400) . 'D');
 
-						if ($t > ($sc['stime'] - $maint_days_before) && $t < $sc['etime']) {
-							$hosts = db_fetch_assoc_prepared("SELECT description FROM host
+								while ($endtimelocal < $nowtime) {
+									$starttimelocal = $starttimelocal->add($addday);
+									$endtimelocal   = $endtimelocal->add($addday);
+								}
+
+								$sc['stime'] = $starttimelocal->getTimestamp();
+								$sc['etime'] = $endtimelocal->getTimestamp();
+							}
+
+							if ($t > ($sc['stime'] - $maint_days_before) && $t < $sc['etime']) {
+								$hosts = db_fetch_assoc_prepared("SELECT description FROM host
 								INNER JOIN plugin_maint_hosts
 								ON host.id=plugin_maint_hosts.host
 								WHERE schedule = ?
 								$q_host_cond",
-								array($sc['id']));
+									[$sc['id']]);
 
-							if (cacti_sizeof($hosts)) {
-								$panel['data'] .= '<b>' . date('d. m . Y  H:i', $sc['stime']) .
-									' - ' . date('d. m . Y  H:i', $sc['etime']) .
-									' - ' . $sc['name'] . ' (Reoccurring)<br/>';
+								if (cacti_sizeof($hosts)) {
+									$panel['data'] .= '<b>' . date('d. m . Y  H:i', $sc['stime']) .
+										' - ' . date('d. m . Y  H:i', $sc['etime']) .
+										' - ' . html_escape($sc['name']) . ' (Reoccurring)<br/>';
 
-								$text = 'Affected hosts:</b> ' . implode (', ', array_column($hosts,'description'));
+									$text = 'Affected hosts:</b> ' . implode(', ', array_map('html_escape', array_column($hosts, 'description')));
 
-								$panel['data'] .= '<div class="inpa_loglines" title="' . $text . '">' . $text . '</div><br/><br/>';
+									$panel['data'] .= '<div class="inpa_loglines" title="' . $text . '">' . $text . '</div><br/><br/>';
+								}
 							}
 
-						}
-
-						break;
+							break;
 					}
 				}
 			}
@@ -311,13 +354,27 @@ function maint($panel, $user_id) {
 }
 
 // -------------------------------------plugin webseer-------------------------------------------
+/**
+ * Data-update function for the 'webseer' panel: summarizes Webseer
+ * plugin URL service-check results (e.g. failures/warnings), or
+ * reports that the Webseer plugin isn't installed. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function webseer($panel, $user_id) {
 	global $config;
 
 	$panel['alarm'] = 'green';
 
-	$lines = get_panel_lines_count($panel['height'], $user_id);
+	$lines            = get_panel_lines_count($panel['height'], $user_id);
 	$important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $user_id);
+
 	if ($important_period == -1) {
 		$important_period = time();
 	}
@@ -325,7 +382,7 @@ function webseer($panel, $user_id) {
 	if (!api_plugin_is_enabled('webseer')) {
 		$panel['alarm']  = 'yellow';
 		$panel['data']   = __('Plugin Webseer isn\'t installed or started', 'intropage');
-		$panel['detail'] = FALSE;
+		$panel['detail'] = false;
 	} else {
 		$all  = db_fetch_cell('SELECT COUNT(*) FROM plugin_webseer_urls');
 		$disa = db_fetch_cell("SELECT COUNT(*) FROM plugin_webseer_urls WHERE enabled != 'on'");
@@ -340,7 +397,7 @@ function webseer($panel, $user_id) {
 		$panel['data'] .= __('Number of checks (all/disabled): ', 'intropage') . $all . ' / ' . $disa . '<br/>';
 		$panel['data'] .= __('Status (up/down): ', 'intropage') . $ok . ' / ' . $ko . '<br/><br/>';
 
-		$logs = db_fetch_assoc ('SELECT pwul.lastcheck, pwul.result, pwul.http_code, pwul.error, pwu.url,
+		$logs = db_fetch_assoc('SELECT pwul.lastcheck, pwul.result, pwul.http_code, pwul.error, pwu.url,
 			UNIX_TIMESTAMP(pwul.lastcheck) AS secs
 			FROM plugin_webseer_urls_log AS pwul
 			INNER JOIN plugin_webseer_urls AS pwu
@@ -350,7 +407,6 @@ function webseer($panel, $user_id) {
 			LIMIT ' . ($lines - 4));
 
 		if (cacti_sizeof($logs) > 0) {
-
 			$panel['data'] .= '<table class="cactiTable">';
 			$panel['data'] .= '<tr><td colspan="3"><strong>' . __('Last log messages', 'intropage') . '</strong></td></tr>';
 			$panel['data'] .= '<tr><td class="rpad">' . __('Date', 'intropage') . '</td>' .
@@ -359,18 +415,18 @@ function webseer($panel, $user_id) {
 
 			foreach ($logs as $row) {
 				$color = 'grey';
-				$text = '';
+				$text  = '';
 
 				if ($row['http_code'] == 200) {
-					if ($row['secs'] > (time()-($important_period))) {
+					if ($row['secs'] > (time() - ($important_period))) {
 						$color = 'green';
 					}
-					$text = __('OK');
+					$text = __('OK', 'intropage');
 				} else {
-					if ($row['secs'] > (time()-($important_period))) {
+					if ($row['secs'] > (time() - ($important_period))) {
 						$color = 'red';
 					}
-					$text = __('Failed');
+					$text = __('Failed', 'intropage');
 				}
 
 				if ($panel['alarm'] == 'grey' && $color == 'green') {
@@ -386,8 +442,8 @@ function webseer($panel, $user_id) {
 				}
 
 				$panel['data'] .= '<td class="rpad">' . $row['lastcheck'] . '</td>' .
-					'<td class="rpad">' . $row['url'] . '</td>' .
-					'<td class="rpad"><span class="inpa_sq color_' . $color . '"></span>' . $row['http_code'] . ' (' . $text . ')</td></tr>';
+					'<td class="rpad">' . html_escape($row['url']) . '</td>' .
+					'<td class="rpad"><span class="inpa_sq color_' . $color . '"></span>' . html_escape($row['http_code']) . ' (' . $text . ')</td></tr>';
 			}
 
 			$panel['data'] .= '</table>';
@@ -397,22 +453,32 @@ function webseer($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------------------ webseer_plugin -----------------------------------------------------
+// ------------------------------------ webseer_plugin -----------------------------------------------------
+/**
+ * Detail-view renderer for the 'webseer' panel, showing an expanded
+ * view of Webseer URL service-check results. Called via the panel
+ * definition's 'details_func' when the user opens the panel's detail
+ * view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function webseer_detail() {
 	global $config, $log;
 
-        $important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $_SESSION['sess_user_id']);
-        if ($important_period == -1) {
-                $important_period = time();
-        }
+	$important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $_SESSION['sess_user_id']);
 
-	$panel = array(
+	if ($important_period == -1) {
+		$important_period = time();
+	}
+
+	$panel = [
 		'name'   => __('Webseer Plugin - Details', 'intropage'),
 		'alarm'  => 'grey',
 		'detail' => '',
-	);
+	];
 
-	$logs = db_fetch_assoc ('SELECT pwul.lastcheck, pwul.result, pwul.http_code, pwul.error, pwu.url,
+	$logs = db_fetch_assoc('SELECT pwul.lastcheck, pwul.result, pwul.http_code, pwul.error, pwu.url,
 		UNIX_TIMESTAMP(pwul.lastcheck) AS secs
 		FROM plugin_webseer_urls_log AS pwul
 		INNER JOIN plugin_webseer_urls AS pwu
@@ -424,36 +490,36 @@ function webseer_detail() {
 	$panel['detail'] = '<table class="cactiTable"><tr class="tableHeader">';
 
 	$panel['detail'] .=
-		'<th class="left">'  . __('Date', 'intropage')      . '</th>' .
-		'<th class="left">'  . __('URL', 'intropage')       . '</th>' .
-		'<th class="left">'  . __('Result', 'intropage')    . '</th>' .
+		'<th class="left">' . __('Date', 'intropage') . '</th>' .
+		'<th class="left">' . __('URL', 'intropage') . '</th>' .
+		'<th class="left">' . __('Result', 'intropage') . '</th>' .
 		'<th class="right">' . __('HTTP code', 'intropage') . '</th>' .
-		'<th class="right">' . __('Error', 'intropage')     . '</th>' .
+		'<th class="right">' . __('Error', 'intropage') . '</th>' .
 	'</tr>';
 
-	foreach ($logs as $log)	{
+	foreach ($logs as $log) {
 		$color = 'grey';
 
 		$panel['detail'] .= '<tr>';
 		$panel['detail'] .= '<td class="left">' . $log['lastcheck'] . '</td>';
-		$panel['detail'] .= '<td class="left">' . $log['url'] . '</td>';
+		$panel['detail'] .= '<td class="left">' . html_escape($log['url']) . '</td>';
 
 		if ($log['result'] == 1) {
-			if ($log['secs'] > (time()-($important_period))) {
+			if ($log['secs'] > (time() - ($important_period))) {
 				$color = 'green';
 			}
-			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('OK') . '</td>';
+			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('OK', 'intropage') . '</td>';
 		} else {
-			if ($log['secs'] > (time()-($important_period))) {
+			if ($log['secs'] > (time() - ($important_period))) {
 				$color = 'red';
 			}
-			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('Failed') . '</td>';
+			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('Failed', 'intropage') . '</td>';
 		}
 
-		$panel['detail'] .= '<td class="right">' . $log['http_code'] . '</td>';
-		$panel['detail'] .= '<td class="right">' . $log['error'] . '</td></tr>';
+		$panel['detail'] .= '<td class="right">' . html_escape($log['http_code']) . '</td>';
+		$panel['detail'] .= '<td class="right">' . html_escape($log['error']) . '</td></tr>';
 
-		if ($color == 'red')	{
+		if ($color == 'red') {
 			$panel['alarm'] = 'red';
 		}
 	}
@@ -463,8 +529,20 @@ function webseer_detail() {
 	return $panel;
 }
 
-
 // -------------------------------------plugin servcheck-------------------------------------------
+/**
+ * Data-update function for the 'servcheck' panel: summarizes ServCheck
+ * plugin service-check results (e.g. failures/warnings), or reports
+ * that the ServCheck plugin isn't installed. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function servcheck($panel, $user_id) {
 	global $config;
 
@@ -473,6 +551,7 @@ function servcheck($panel, $user_id) {
 	$lines = get_panel_lines_count($panel['height'], $user_id);
 
 	$important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $user_id);
+
 	if ($important_period == -1) {
 		$important_period = time();
 	}
@@ -480,26 +559,36 @@ function servcheck($panel, $user_id) {
 	if (!api_plugin_is_enabled('servcheck')) {
 		$panel['alarm']  = 'yellow';
 		$panel['data']   = __('Plugin Servcheck isn\'t installed or started', 'intropage');
-		$panel['detail'] = FALSE;
+		$panel['detail'] = false;
 	} else {
-		$ok = 0; $ko = 0;
+		$ok   = 0;
+		$ko   = 0;
 		$all  = db_fetch_cell('SELECT COUNT(*) FROM plugin_servcheck_test');
 		$disa = db_fetch_cell("SELECT COUNT(*) FROM plugin_servcheck_test WHERE enabled != 'on'");
 
+		// servcheck < 0.3 uses another name
 		$dncolumn = db_fetch_cell("SELECT COLUMN_NAME FROM information_schema.columns
 			WHERE TABLE_NAME = 'plugin_servcheck_test' AND COLUMN_NAME = 'display_name'");
 
-		// servcheck < 0.3 uses another name
 		if (!$dncolumn) {
 			$dncolumn = 'name';
 		}
-		$tests = db_fetch_assoc('SELECT ' . $dncolumn . ' as name, type, id, lastcheck FROM plugin_servcheck_test');
+
+		// servcheck < 0.4 uses another name
+		$lchcolumn = db_fetch_cell("SELECT COLUMN_NAME FROM information_schema.columns
+			WHERE TABLE_NAME = 'plugin_servcheck_test' AND COLUMN_NAME = 'last_check'");
+
+		if (!$lchcolumn) {
+			$lchcolumn = 'lastcheck';
+		}
+
+		$tests = db_fetch_assoc('SELECT ' . $dncolumn . ' as name, type, id, ' . $lchcolumn . ' FROM plugin_servcheck_test');
 
 		foreach ($tests as $test) {
 			$state = db_fetch_cell_prepared('SELECT result FROM plugin_servcheck_log
-				WHERE test_id = ? ORDER BY lastcheck DESC LIMIT 1',
-				array($test['id']));
-				
+				WHERE test_id = ? ORDER BY id DESC LIMIT 1',
+				[$test['id']]);
+
 			if ($state == 'ok') {
 				$ok++;
 			} else {
@@ -514,15 +603,15 @@ function servcheck($panel, $user_id) {
 		$panel['data'] .= __('Number of checks (all/disabled): ', 'intropage') . $all . ' / ' . $disa . '<br/>';
 		$panel['data'] .= __('Status (ok/error): ', 'intropage') . $ok . ' / ' . $ko . '<br/><br/>';
 
-		$logs = db_fetch_assoc ('SELECT psl.lastcheck as `lastcheck`, result, error, '. $dncolumn . ' as name, type,
-			UNIX_TIMESTAMP(psl.lastcheck) AS secs
+		$logs = db_fetch_assoc('SELECT psl.' . $lchcolumn . ' as `lastcheck`, result, error, ' . $dncolumn . ' as name, type,
+			UNIX_TIMESTAMP(psl.' . $lchcolumn . ') AS secs
 			FROM plugin_servcheck_log AS psl
 			LEFT JOIN plugin_servcheck_test AS pst
-			ON psl.test_id = pst.id 
+			ON psl.test_id = pst.id
+			ORDER BY psl.id DESC
 			LIMIT ' . ($lines - 4));
 
 		if (cacti_sizeof($logs) > 0) {
-
 			$panel['data'] .= '<table class="cactiTable">';
 			$panel['data'] .= '<tr><td colspan="4"><strong>' . __('Last log records', 'intropage') . '</strong></td></tr>';
 			$panel['data'] .= '<tr><td class="rpad">' . __('Date', 'intropage') . '</td>' .
@@ -532,18 +621,18 @@ function servcheck($panel, $user_id) {
 
 			foreach ($logs as $row) {
 				$color = 'grey';
-				$text = '';
+				$text  = '';
 
 				if ($row['result'] == 'ok') {
-					if ($row['secs'] > (time()-($important_period))) {
+					if ($row['secs'] > (time() - ($important_period))) {
 						$color = 'green';
 					}
-					$text = __('OK');
+					$text = __('OK', 'intropage');
 				} else {
-					if ($row['secs'] > (time()-($important_period))) {
+					if ($row['secs'] > (time() - ($important_period))) {
 						$color = 'red';
 					}
-					$text = __('Failed');
+					$text = __('Failed', 'intropage');
 				}
 
 				if ($panel['alarm'] == 'grey' && $color == 'green') {
@@ -559,9 +648,9 @@ function servcheck($panel, $user_id) {
 				}
 
 				$panel['data'] .= '<td class="rpad">' . $row['lastcheck'] . '</td>' .
-					'<td class="rpad">' . $row['name'] . '</td>' .
-					'<td class="rpad">' . $row['type'] . '</td>' .
-					'<td class="rpad"><span class="inpa_sq color_' . $color . '"></span>' . $row['result'] .'</td></tr>';
+					'<td class="rpad">' . html_escape($row['name']) . '</td>' .
+					'<td class="rpad">' . html_escape($row['type']) . '</td>' .
+					'<td class="rpad"><span class="inpa_sq color_' . $color . '"></span>' . html_escape($row['result']) . '</td></tr>';
 			}
 
 			$panel['data'] .= '</table>';
@@ -571,71 +660,91 @@ function servcheck($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------------------ servcheck_plugin_detail-------------------------------------------------
+// ------------------------------------ servcheck_plugin_detail-------------------------------------------------
+/**
+ * Detail-view renderer for the 'servcheck' panel, showing an expanded
+ * view of ServCheck service-check results. Called via the panel
+ * definition's 'details_func' when the user opens the panel's detail
+ * view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function servcheck_detail() {
 	global $config, $log;
 
-        $important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $_SESSION['sess_user_id']);
-        if ($important_period == -1) {
-                $important_period = time();
-        }
+	$important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $_SESSION['sess_user_id']);
 
-	$panel = array(
+	if ($important_period == -1) {
+		$important_period = time();
+	}
+
+	$panel = [
 		'name'   => __('Servcheck Plugin - Details', 'intropage'),
 		'alarm'  => 'grey',
 		'detail' => '',
-	);
+	];
 
+	// servcheck < 0.3 uses another name
 	$dncolumn = db_fetch_cell("SELECT COLUMN_NAME FROM information_schema.columns
 	WHERE TABLE_NAME = 'plugin_servcheck_test' AND COLUMN_NAME = 'display_name'");
-	// servcheck < 0.3 uses another name
+
 	if (!$dncolumn) {
 		$dncolumn = 'name';
 	}
 
-	$logs = db_fetch_assoc ('SELECT psl.lastcheck as `lastcheck`, result, error, ' . $dncolumn . ', type,
-		UNIX_TIMESTAMP(psl.lastcheck) AS secs
+	// servcheck < 0.4 uses another name
+	$lchcolumn = db_fetch_cell("SELECT COLUMN_NAME FROM information_schema.columns
+		WHERE TABLE_NAME = 'plugin_servcheck_test' AND COLUMN_NAME = 'last_check'");
+
+	if (!$lchcolumn) {
+		$lchcolumn = 'lastcheck';
+	}
+
+	$logs = db_fetch_assoc('SELECT psl.' . $lchcolumn . '  as `lastcheck`, result, result_search, error, ' . $dncolumn . ', type,
+		UNIX_TIMESTAMP(psl.' . $lchcolumn . ') AS secs
 		FROM plugin_servcheck_log AS psl
 		LEFT JOIN plugin_servcheck_test AS pst
 		ON psl.test_id = pst.id
-		ORDER BY psl.lastcheck DESC
+		ORDER BY psl.' . $lchcolumn . ' DESC
 		LIMIT 40');
 
 	$panel['detail'] = '<table class="cactiTable"><tr class="tableHeader">';
 
 	$panel['detail'] .=
-		'<th class="left">'  . __('Date', 'intropage') . '</th>' .
-		'<th class="left">'  . __('Test', 'intropage') . '</th>' .
-		'<th class="left">'  . __('Type', 'intropage') . '</th>' .
+		'<th class="left">' . __('Date', 'intropage') . '</th>' .
+		'<th class="left">' . __('Test', 'intropage') . '</th>' .
+		'<th class="left">' . __('Type', 'intropage') . '</th>' .
 		'<th class="right">' . __('Result', 'intropage') . '</th>' .
+		'<th class="right">' . __('Search result', 'intropage') . '</th>' .
 		'<th class="right">' . __('Error', 'intropage') . '</th>' .
 	'</tr>';
 
-	foreach ($logs as $log)	{
+	foreach ($logs as $log) {
 		$color = 'grey';
 
 		$panel['detail'] .= '<tr>';
 		$panel['detail'] .= '<td class="left">' . $log['lastcheck'] . '</td>';
-		$panel['detail'] .= '<td class="left">' . $log[$dncolumn] . '</td>';
-		$panel['detail'] .= '<td class="left">' . $log['type'] . '</td>';
+		$panel['detail'] .= '<td class="left">' . html_escape($log[$dncolumn]) . '</td>';
+		$panel['detail'] .= '<td class="left">' . html_escape($log['type']) . '</td>';
 
 		if ($log['result'] == 'ok') {
-			if ($log['secs'] > (time()-($important_period))) {
+			if ($log['secs'] > (time() - ($important_period))) {
 				$color = 'green';
 			}
 
-			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('OK') . '</td>';
+			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('OK', 'intropage') . '</td>';
 		} else {
-			if ($log['secs'] > (time()-($important_period))) {
+			if ($log['secs'] > (time() - ($important_period))) {
 				$color = 'red';
 			}
-			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('Failed') . '</td>';
+			$panel['detail'] .= '<td class="left"><span class="inpa_sq color_' . $color . '"></span>' . __('Failed', 'intropage') . '</td>';
 		}
 
-		$panel['detail'] .= '<td class="right">' . $log['result'] . '</td>';
-		$panel['detail'] .= '<td class="right">' . $log['error'] . '</td></tr>';
+		$panel['detail'] .= '<td class="right">' . html_escape($log['result_search']) . '</td>';
+		$panel['detail'] .= '<td class="right">' . html_escape($log['error']) . '</td></tr>';
 
-		if ($color == 'red')	{
+		if ($color == 'red') {
 			$panel['alarm'] = 'red';
 		}
 	}
@@ -644,4 +753,3 @@ function servcheck_detail() {
 
 	return $panel;
 }
-

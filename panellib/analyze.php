@@ -1,7 +1,7 @@
 <?php
 /* vim: ts=4
  +-------------------------------------------------------------------------+
- | Copyright (C) 2004-2025 The Cacti Group, Inc.                           |
+ | Copyright (C) 2004-2026 The Cacti Group, Inc.                           |
  | Copyright (C) 2004-2025 Petr Macek                                      |
  |                                                                         |
  | This program is free software; you can redistribute it and/or           |
@@ -24,16 +24,29 @@
  +-------------------------------------------------------------------------+
 */
 
+/**
+ * Registers the 'analyze' panel category and its 'Analyze Logins',
+ * 'Analyze Logs', 'Database Checks', 'Analyze Cacti Objects', and
+ * 'Analyze DS stats' panels with the panel library. Called from
+ * initialize_panel_library() while building the full set of available
+ * dashboard panels.
+ *
+ * @return array The panel definitions provided by this file, keyed by
+ *              panel id.
+ *
+ * @global array $registry Populated here with this file's 'analyze'
+ *                         category metadata.
+ */
 function register_analyze() {
 	global $registry;
 
-	$registry['analyze'] = array(
+	$registry['analyze'] = [
 		'name'        => __('Analysis Panels', 'intropage'),
 		'description' => __('Panels that analyze the current behavior of Cacti and it\'s plugins.', 'intropage')
-	);
+	];
 
-	$panels = array(
-		'analyse_login' => array(
+	$panels = [
+		'analyse_login' => [
 			'name'         => __('Analyze Logins', 'intropage'),
 			'description'  => __('Analyze the last several Cacti logins for trends and errors.', 'intropage'),
 			'class'        => 'analyze',
@@ -50,8 +63,8 @@ function register_analyze() {
 			'update_func'  => 'analyse_login',
 			'details_func' => 'analyse_login_detail',
 			'trends_func'  => false
-		),
-		'analyse_log' => array(
+		],
+		'analyse_log' => [
 			'name'         => __('Analyze Logs', 'intropage'),
 			'description'  => __('Look for common errors in Cacti\'s log file that should be a cause for concern.', 'intropage'),
 			'class'        => 'analyze',
@@ -68,8 +81,8 @@ function register_analyze() {
 			'update_func'  => 'analyse_log',
 			'details_func' => 'analyse_log_detail',
 			'trends_func'  => false
-		),
-		'analyse_db' => array(
+		],
+		'analyse_db' => [
 			'name'         => __('Database Checks', 'intropage'),
 			'description'  => __('Analyze MySQL/MariaDB database for common errors.  Note that this process may take a long time on very large systems.', 'intropage'),
 			'class'        => 'analyze',
@@ -86,8 +99,8 @@ function register_analyze() {
 			'update_func'  => 'analyse_db',
 			'details_func' => false,
 			'trends_func'  => false
-		),
-		'analyse_tree_host_graph' => array(
+		],
+		'analyse_tree_host_graph' => [
 			'name'         => __('Analyze Cacti Objects', 'intropage'),
 			'description'  => __('Analyze Trees, Graphs, Hosts, ...', 'intropage'),
 			'class'        => 'analyze',
@@ -104,8 +117,8 @@ function register_analyze() {
 			'update_func'  => 'analyse_tree_host_graph',
 			'details_func' => 'analyse_tree_host_graph_detail',
 			'trends_func'  => false
-		),
-		'analyse_ds_stat' => array(
+		],
+		'analyse_ds_stat' => [
 			'name'         => __('Analyze DS stats', 'intropage'),
 			'description'  => __('Analyze data source stats', 'intropage'),
 			'class'        => 'analyze',
@@ -122,20 +135,32 @@ function register_analyze() {
 			'update_func'  => 'analyse_ds_stats',
 			'details_func' => false,
 			'trends_func'  => 'ds_stats_trend'
-		),
-	);
+		],
+	];
 
 	return $panels;
 }
 
-//------------------------------------ analyse_login -----------------------------------------------------
+// ------------------------------------ analyse_login -----------------------------------------------------
+/**
+ * Data-update function for the 'analyse_login' panel: analyzes the
+ * most recent Cacti login attempts for failure trends/errors. Called
+ * from intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function analyse_login($panel, $user_id) {
 	global $config;
 
-	$lines = read_user_setting('intropage_number_of_lines', read_config_option('intropage_number_of_lines'), false, $user_id);
+	$lines            = intropage_get_lines($user_id);
 	$important_period = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'), false, $user_id);
 
-  if ($important_period == -1) {
+	if ($important_period == -1) {
 		$important_period = time();
 	}
 
@@ -157,7 +182,7 @@ function analyse_login($panel, $user_id) {
 		INNER JOIN user_log
 		ON user_auth.username = user_log.username
 		ORDER BY user_log.time desc
-		LIMIT ' . ($lines-3));
+		LIMIT ' . ($lines - 3));
 
 	if (cacti_sizeof($rows)) {
 		$panel['data'] .=
@@ -171,27 +196,24 @@ function analyse_login($panel, $user_id) {
 		$i = 0;
 
 		foreach ($rows as $row) {
-
 			$color = 'grey';
 
 			if ($row['result'] == 0) {
 				$status = __('Failed', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'red';
 				}
-
 			} elseif ($row['result'] == 1) {
 				$status = __('Success - Login', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'green';
 				}
-
 			} else {
 				$status = __('Success - Token', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'green';
 				}
 			}
@@ -213,7 +235,7 @@ function analyse_login($panel, $user_id) {
 				'<td class="left">%s</td>' .
 				'<td class="left">%s</td>' .
 				'<td><span class="inpa_sq color_' . $color . '"></span>%s</td>' .
-			'</tr>', $i % 2 == 0 ? 'even':'odd', substr($row['time'], 5), $row['username'], $row['ip'], $status);
+			'</tr>', $i % 2 == 0 ? 'even' : 'odd', substr($row['time'], 5), html_escape($row['username']), html_escape($row['ip']), $status);
 
 			$i++;
 		}
@@ -228,7 +250,7 @@ function analyse_login($panel, $user_id) {
 		WHERE time > adddate(now(), INTERVAL -1 HOUR)');
 
 	if (cacti_sizeof($data)) {
-		$text = implode (', ', array_column($data,'username'));
+		$text = implode(', ', array_map('html_escape', array_column($data, 'username')));
 	} else {
 		$text = __('None', 'intropage');
 	}
@@ -240,7 +262,19 @@ function analyse_login($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------------------ analyse_log -----------------------------------------------------
+// ------------------------------------ analyse_log -----------------------------------------------------
+/**
+ * Data-update function for the 'analyse_log' panel: scans Cacti's log
+ * file for common error patterns that warrant attention, summarizing
+ * the findings. Called from intropage_gather_stats()/get_panel() via
+ * the panel definition's 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function analyse_log($panel, $user_id) {
 	global $config;
 
@@ -260,17 +294,17 @@ function analyse_log($panel, $user_id) {
 	$panel['data']  = '';
 	$panel['alarm'] = 'green';
 
-	$log = array(
-		'file' => read_config_option('path_cactilog'),
+	$log = [
+		'file'      => read_config_option('path_cactilog'),
 		'nbr_lines' => read_config_option('intropage_analyse_log_rows'),
-	);
+	];
 
 	$log['size']  = @filesize($log['file']);
 	$log['lines'] = tail_log($log['file'], $log['nbr_lines']);
 
 	if (!$log['size'] || empty($log['lines'])) {
 		$panel['alarm'] = 'red';
-		$panel['data'] = __('Log file not accessible or empty', 'intropage');
+		$panel['data']  = __('Log file not accessible or empty', 'intropage');
 	} else {
 		$error  = 0;
 		$ecount = 0;
@@ -303,14 +337,14 @@ function analyse_log($panel, $user_id) {
 			'</a></td>';
 
 		if ($log['size'] < 0) {
-			$panel['alarm'] = 'red';
+			$panel['alarm']  = 'red';
 			$log_size_text   = __('Log Size: Larger than 2GB', 'intropage');
 			$log_size_note   = '';
 		} elseif ($log['size'] < 255999999) {
 			$log_size_text   = human_filesize($log['size']);
 			$log_size_note   = __('Log Size: OK', 'intropage');
 		} else {
-			$panel['alarm'] = 'yellow';
+			$panel['alarm']  = 'yellow';
 			$log_size_text   = human_filesize($log['size']);
 			$log_size_note   = __('Log Size: Quite Large', 'intropage');
 		}
@@ -327,11 +361,11 @@ function analyse_log($panel, $user_id) {
 
 		$log['lines'] = array_reverse(tail_log($log['file'], $lines - 3));
 
-		$datechar = array(
+		$datechar = [
 			GDC_HYPHEN => '-',
 			GDC_SLASH  => '/',
 			GDC_DOT    => '.'
-		);
+		];
 
 		$date_fmt        = read_config_option('default_date_format');
 		$dateCharSetting = read_config_option('default_datechar');
@@ -345,24 +379,31 @@ function analyse_log($panel, $user_id) {
 		switch ($date_fmt) {
 			case GD_MO_D_Y:
 				$format = 'm' . $datecharacter . 'd' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_MN_D_Y:
 				$format = 'M' . $datecharacter . 'd' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_D_MO_Y:
 				$format = 'd' . $datecharacter . 'm' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_D_MN_Y:
 				$format = 'd' . $datecharacter . 'M' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_Y_MO_D:
 				$format = 'Y' . $datecharacter . 'm' . $datecharacter . 'd H:i:s';
+
 				break;
 			case GD_Y_MN_D:
 				$format = 'Y' . $datecharacter . 'M' . $datecharacter . 'd H:i:s';
+
 				break;
 			default:
 				$format = 'Y' . $datecharacter . 'm' . $datecharacter . 'd H:i:s';
+
 				break;
 		}
 
@@ -372,10 +413,10 @@ function analyse_log($panel, $user_id) {
 			if (strlen($line) > 3) {
 				$date = explode(' - ', $line);
 
-				$d_p = date_parse_from_format($format, $date[0]);
-				$timestamp = mktime ($d_p['hour'], $d_p['minute'], $d_p['second'], $d_p['month'], $d_p['day'], $d_p['year']);
+				$d_p       = date_parse_from_format($format, $date[0]);
+				$timestamp = mktime($d_p['hour'], $d_p['minute'], $d_p['second'], $d_p['month'], $d_p['day'], $d_p['year']);
 
-				if ($timestamp > (time()-($important_period))) {
+				if ($timestamp > (time() - ($important_period))) {
 					if (preg_match('/( ERROR|FATAL)/', $line)) {
 						$color = 'red';
 					} elseif (preg_match('/( WARNING)/', $line)) {
@@ -385,9 +426,9 @@ function analyse_log($panel, $user_id) {
 					}
 				}
 
-				$panel['data'] .= '<tr><td class="inpa_loglines" colspan="3" title="' . $line . '"><span class="inpa_sq color_' . $color . '"></span>';
+				$panel['data'] .= '<tr><td class="inpa_loglines" colspan="3" title="' . html_escape($line) . '"><span class="inpa_sq color_' . $color . '"></span>';
 
-				$panel['data'] .= $line;
+				$panel['data'] .= html_escape($line);
 				$panel['data'] .= '</td></tr>';
 			}
 		}
@@ -404,8 +445,21 @@ function analyse_log($panel, $user_id) {
 	save_panel_result($panel, $user_id);
 }
 
-
 // -------------------------------------analyse db-------------------------------------------
+/**
+ * Data-update function for the 'analyse_db' panel: runs a set of
+ * MySQL/MariaDB database health checks (e.g. table integrity,
+ * orphaned rows) and summarizes any problems found; may take a long
+ * time on very large systems. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function analyse_db($panel, $user_id) {
 	global $config, $database_default;
 
@@ -419,20 +473,25 @@ function analyse_db($panel, $user_id) {
 		SET last_update = NOW()
 		WHERE panel_id = ?
 		AND user_id = 0',
-		array($panel['panel_id']));
+		[$panel['panel_id']]);
 
 	$size = db_fetch_cell_prepared('SELECT SUM(DATA_LENGTH+INDEX_LENGTH)
 		FROM information_schema.TABLES WHERE TABLE_SCHEMA=?',
-		array($database_default));
+		[$database_default]);
 
 	$tables = db_fetch_assoc('SHOW TABLES');
 
 	if ($size > 1073741824) {
 		$panel['alarm'] = 'grey';
-		$panel['data']  = '<tr><td>' . __('Skipping DB tables checks. Database too large') . '</td></tr>';
+		$panel['data']  = '<tr><td>' . __('Skipping DB tables checks. Database too large', 'intropage') . '</td></tr>';
 	} else {
-
 		$db_check_level = read_config_option('intropage_analyse_db_level');
+
+		// The setting is a drop_array, but it reaches SQL as text; keep the
+		// allowed list authoritative here too. See include/variables.php.
+		if (!in_array($db_check_level, ['QUICK', 'FAST', 'CHANGED', 'MEDIUM', 'EXTENDED'], true)) {
+			$db_check_level = 'CHANGED';
+		}
 
 		foreach ($tables as $key => $val) {
 			$row = db_fetch_row('check table ' . current($val) . ' ' . $db_check_level);
@@ -496,7 +555,6 @@ function analyse_db($panel, $user_id) {
 	}
 
 	if ($cerrors > 0) {
-
 		if ($color == 'red') {
 			$panel['alarm'] = 'red';
 		} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
@@ -515,7 +573,6 @@ function analyse_db($panel, $user_id) {
 	}
 
 	if ($aerrors > 0) {
-
 		if ($color == 'red') {
 			$panel['alarm'] = 'red';
 		} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
@@ -531,19 +588,30 @@ function analyse_db($panel, $user_id) {
 	$panel['data'] .= '<tr><td>' . __('Damaged tables: %s', $damaged, 'intropage');
 
 	if ($damaged > 0) {
-		$panel['data'] .= display_tooltip(__('You should run check and repair table commands'));
+		$panel['data'] .= display_tooltip(__('You should run check and repair table commands', 'intropage'));
 	}
 
 	$panel['data'] .= '</td></tr>' .
-		'<tr><td>' . __('Memory tables: %s', $memtables, 'intropage')  . '</td></tr>' .
+		'<tr><td>' . __('Memory tables: %s', $memtables, 'intropage') . '</td></tr>' .
 		'<tr><td>' . __('All tables: %s', cacti_count($tables), 'intropage') . '</td></tr>';
 
 	save_panel_result($panel, $user_id);
-
 }
 
-
 // --------------------------------analyse_tree_host_graph
+/**
+ * Data-update function for the 'analyse_tree_host_graph' panel:
+ * analyzes Cacti's trees, hosts, and graphs for common configuration
+ * problems (e.g. orphaned graphs, empty trees), summarizing the
+ * findings. Called from intropage_gather_stats()/get_panel() via the
+ * panel definition's 'update_func'.
+ *
+ * @param array $panel   The panel's current definition/data row.
+ * @param int   $user_id The id of the user the panel is being rendered
+ *                       for, used to save the result.
+ *
+ * @return void
+ */
 function analyse_tree_host_graph($panel, $user_id) {
 	global $config;
 
@@ -552,16 +620,16 @@ function analyse_tree_host_graph($panel, $user_id) {
 	$console_access = get_console_access($user_id);
 
 	$total_errors = 0;
-	$data         = array();
+	$data         = [];
 
 	$simple_perms = get_simple_device_perms($user_id);
 
 	if (!$simple_perms) {
 		$allowed_devices = intropage_get_allowed_devices($user_id);
-		$host_cond = ' IN (' . $allowed_devices . ')';
+		$host_cond       = ' IN (' . $allowed_devices . ')';
 	} else {
 		$allowed_devices = false;
-		$q_host_cond = '';
+		$q_host_cond     = '';
 	}
 
 	if ($allowed_devices !== false || $simple_perms) {
@@ -588,7 +656,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices with the same IP and port: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices with the same IP and port: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -620,17 +688,17 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Not optimized Bulk Walk Size devices: %s', $count, 'intropage');
-			$panel['data'] .= display_tooltip(__('Please have a look to device parameter "Bulk Walk Maximum Repetitions". You can improve your poller performance')) . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Not optimized Bulk Walk Size devices: %s', $count, 'intropage');
+			$panel['data'] .= display_tooltip(__('Please have a look to device parameter "Bulk Walk Maximum Repetitions". You can improve your poller performance', 'intropage')) . '</td></tr>';
 		}
 	}
 
 	// last run of reindex, rrdchecker, ...
-	$last_runs = array (
-		'reindex_last_run_time'    => __('Reindex last run'),
-		'rrdcheck_last_run_time'   => __('RRD Checker last run'),
-		'rrdcleaner_last_run_time' => __('RRD Cleaner last run')
-	);
+	$last_runs =  [
+		'reindex_last_run_time'    => __('Reindex last run', 'intropage'),
+		'rrdcheck_last_run_time'   => __('RRD Checker last run', 'intropage'),
+		'rrdcleaner_last_run_time' => __('RRD Cleaner last run', 'intropage')
+	];
 
 	$date_fmt = date_time_format();
 
@@ -640,16 +708,16 @@ function analyse_tree_host_graph($panel, $user_id) {
 		if (config_value_exists($key)) {
 			$last = read_config_option($key);
 
-			if ($last < (time() - 86400*7)) {
+			if ($last < (time() - 86400 * 7)) {
 				$color = 'yellow';
-				$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('%s: %s', $value, date($date_fmt, $last), 'intropage');
-				$panel['data'] .= display_tooltip(__('It is recommended to run this tool at least occasionally', 'intropage')) . '<br/>';
+				$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('%s: %s', $value, date($date_fmt, $last), 'intropage');
+				$panel['data'] .= display_tooltip(__('It is recommended to run this tool at least occasionally', 'intropage')) . '</td></tr>';
 				unset($last);
 			}
 		} else {
 			$color = 'red';
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('%s: not run yet', $value, 'intropage');
-			$panel['data'] .= display_tooltip(__('It is recommended to run this tool at least occasionally', 'intropage')) . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('%s: not run yet', $value, 'intropage');
+			$panel['data'] .= display_tooltip(__('It is recommended to run this tool at least occasionally', 'intropage')) . '</td></tr>';
 		}
 	}
 
@@ -680,7 +748,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 		$q_host_cond
 		ORDER BY `name_cache` ASC");
 	} else {
-		$data = array();
+		$data = [];
 	}
 
 	$sql_count  = ($data === false) ? __('N/A', 'intropage') : cacti_count($data);
@@ -696,7 +764,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 			$panel['alarm'] = 'yellow';
 		}
 
-		$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Orphaned Data Sources: %s', $sql_count, 'intropage') . '<br/>';
+		$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Orphaned Data Sources: %s', $sql_count, 'intropage') . '</td></tr>';
 	}
 
 	if ($allowed_devices !== false || $simple_perms) {
@@ -713,7 +781,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 			WHERE (dl.snmp_index = "" AND dl.snmp_query_id > 0) ' .
 			$q_host_cond);
 	} else {
-		$data = array();
+		$data = [];
 	}
 
 	$sql_count  = ($data === false) ? __('N/A', 'intropage') : cacti_count($data);
@@ -727,7 +795,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 			$panel['alarm'] = 'yellow';
 		}
 
-		$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Datasource - bad indexes: %s', $sql_count, 'intropage') . '<br/>';
+		$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Datasource - bad indexes: %s', $sql_count, 'intropage') . '</td></tr>';
 
 		$total_errors += $sql_count;
 	}
@@ -736,7 +804,6 @@ function analyse_tree_host_graph($panel, $user_id) {
 	// I don't use thold get_allowed_thold because of join plugin_thold_threshold_contact
 
 	if (api_plugin_is_enabled('thold')) {
-
 		if ($allowed_devices !== false || $simple_perms) {
 			if (!$simple_perms) {
 				$q_host_cond = 'AND gl.host_id ' . $host_cond;
@@ -765,7 +832,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 					$q_host_cond
 					HAVING (user0 IS NULL OR (user1 IS NULL OR user2 IS NULL))");
 		} else {
-			$data = array();
+			$data = [];
 		}
 
 		$sql_count  = ($data === false) ? __('N/A', 'intropage') : cacti_count($data);
@@ -779,7 +846,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Thold logonly alert/warning: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Thold logonly alert/warning: %s', $sql_count, 'intropage') . '</td></tr>';
 
 			$total_errors += $sql_count;
 		}
@@ -810,10 +877,9 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices with the same description: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices with the same description: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
-
 
 	if ($allowed_devices !== false || $simple_perms) {
 		if (!$simple_perms) {
@@ -839,7 +905,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices in more than one tree: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices in more than one tree: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -869,7 +935,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices without graphs: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices without graphs: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -898,7 +964,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices without tree: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices without tree: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -926,7 +992,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 				$panel['alarm'] = 'yellow';
 			}
 
-			$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Devices with default public/private community: %s', $sql_count, 'intropage') . '<br/>';
+			$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Devices with default public/private community: %s', $sql_count, 'intropage') . '</td></tr>';
 		}
 	}
 
@@ -955,10 +1021,9 @@ function analyse_tree_host_graph($panel, $user_id) {
 	$sql_count  = ($data === false) ? __('N/A', 'intropage') : cacti_count($data);
 
 	if (cacti_sizeof($data)) {
-
 		$panel['alarm'] = 'red';
 
-		$panel['data'] .= '<span class="inpa_sq color_red"></span>' . __('Graph items/template items issue: %s', $sql_count, 'intropage') . '<br/>';
+		$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_red"></span>' . __('Graph items/template items issue: %s', $sql_count, 'intropage') . '</td></tr>';
 	}
 
 	if (api_plugin_is_enabled('monitor')) {
@@ -983,14 +1048,16 @@ function analyse_tree_host_graph($panel, $user_id) {
 					$panel['alarm'] = 'yellow';
 				}
 
-				$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Plugin Monitor - Unmonitored hosts: %s', $sql_count, 'intropage') . '<br/>';
+				$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Plugin Monitor - Unmonitored hosts: %s', $sql_count, 'intropage') . '</td></tr>';
 			}
 		}
 	}
 
 	$cpu_cores = 0;
+
 	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-		$output = shell_exec("powershell -Command \"Get-WmiObject Win32_Processor | Select-Object NumberOfLogicalProcessors\"");
+		$output = shell_exec('powershell -Command "Get-WmiObject Win32_Processor | Select-Object NumberOfLogicalProcessors"');
+
 		if (!is_null($output) && $output !== false) {
 			preg_match_all('/\d+/', $output, $matches);
 			$cpu_cores = array_sum($matches[0]);
@@ -1004,6 +1071,7 @@ function analyse_tree_host_graph($panel, $user_id) {
 			$cpu_cores = shell_exec('/bin/nproc');
 		} else {
 			$output = shell_exec('nproc');
+
 			if (!is_null($output) && $output !== false) {
 				$cpu_cores = $output;
 			}
@@ -1011,87 +1079,95 @@ function analyse_tree_host_graph($panel, $user_id) {
 	}
 	$cpu_cores = trim($cpu_cores);
 
-	$sett = db_fetch_row('SELECT processes, threads FROM poller WHERE id = 1');
+	$sett  = db_fetch_row('SELECT processes, threads FROM poller WHERE id = 1');
 	$color = 'green';
-	$text = __('OK');
+	$text  = __('OK', 'intropage');
 
 	if ($cpu_cores == 0) {
 		if ($sett['processes'] == 1 || $sett['threads'] == 1) {
 			$color = 'yellow';
-			$text = 'Cannot determine number of CPU cores. You have set only 1 process or thread for poller. You may have performance problems.';
+			$text  = 'Cannot determine number of CPU cores. You have set only 1 process or thread for poller. You may have performance problems.';
 		}
 	} elseif ($cpu_cores == 1 && ($sett['processes'] == 1 || $sett['threads'] == 1)) {
-			$color = 'yellow';
-			$text = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
-			$total_errors++;
+		$color = 'yellow';
+		$text  = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
+		$total_errors++;
 	} elseif ($cpu_cores > 1) {
 		if ($sett['processes'] == 1 || $sett['threads'] == 1) {
 			$color = 'red';
-			$text = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
+			$text  = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
 			$total_errors++;
-		} elseif ($sett['processes']/$cpu_cores < 0.4 || $sett['threads']/$cpu_cores < 0.4) {
+		} elseif ($sett['processes'] / $cpu_cores < 0.4 || $sett['threads'] / $cpu_cores < 0.4) {
 			$color = 'yellow';
-			$text = 'You are using less than half of CPU cores. For better performance, consider increasing poller processes or threads.';
+			$text  = 'You are using less than half of CPU cores. For better performance, consider increasing poller processes or threads.';
 		}
 	}
 
-	$panel['data'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Server CPU cores / processes / threads: %s / %s / %s', $cpu_cores, $sett['processes'], $sett['threads'], 'intropage');
-	$panel['data'] .= display_tooltip($text) . '<br/>';
+	$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_' . $color . '"></span>' . __('Server CPU (cores / processes / threads): %s / %s / %s', $cpu_cores, $sett['processes'], $sett['threads'], 'intropage');
+	$panel['data'] .= display_tooltip($text) . '</td></tr>';
 
-	$notify = db_fetch_cell ("SELECT COUNT(*) FROM settings WHERE name = 'notify_admin' AND value='on'");
+	$notify      = db_fetch_cell("SELECT COUNT(*) FROM settings WHERE name = 'notify_admin' AND value='on'");
 	$admin_email = db_fetch_cell("SELECT email_address FROM user_auth WHERE username = 'admin' LIMIT 1");
-	$text = 'Administrator can be notified by email about problems. It is therefore necessary to set the admin account email address and at the same time enable notifications in Settings - Mail/Reporting/DNS';
+	$text        = 'Administrator can be notified by email about problems. It is therefore necessary to set the admin account email address and at the same time enable notifications in Settings - Mail/Reporting/DNS';
 
-	if (!$notify && $admin_email == '') {
-		$panel['data'] .= '<span class="inpa_sq color_red"></span>' . __('Notify admin is disabled and admin email is not set', 'intropage');
-		$panel['data'] .= display_tooltip($text) . '<br/>';
+	if (!$notify || $admin_email == '') {
+		$panel['data'] .= '<tr><td class="block"><span class="inpa_sq color_red"></span>' . __('Notify admin is disabled and admin email is not set', 'intropage');
+		$panel['data'] .= display_tooltip($text) . '</td></tr>';
 		$total_errors++;
 		$panel['alarm'] = 'red';
-	} elseif ($notify || $admin_email == '') {
-		$panel['data'] .= '<span class="inpa_sq color_yellow"></span>' . __('Notify admin is disabled or admin email is not set', 'intropage');
-		$panel['data'] .= display_tooltip($text) . '<br/>';
-		$total_errors++;
-		if ($panel['alarm'] == 'green') {
-			$panel['alarm'] = 'yellow';
-		}
 	}
 
 	if ($total_errors > 0) {
 		$panel['data'] = '<table class="cactiTable">
-			<tr>
-				<td><span class="txt_med">' . __('Found %s problems', $total_errors, 'intropage') . '</span><br/><br/>' . $panel['data'] . '</td>
-			</tr>
+			<tr><td><span class="txt_med">' . __('Found %s problems', $total_errors, 'intropage') . '</span></td></tr>
+			' . $panel['data'] . '
 		</table>';
 	} else {
 		$panel['data'] = '<table class="cactiTable">
-			<tr>
-				<td><span class="txt_med">' . __('Everything OK', 'intropage') . '</span><br/>' . $panel['data'] . '</td>
-			</tr>
-		</table>';;
+			<tr><td><span class="txt_med">' . __('Everything OK', 'intropage') . '</span></td></tr>
+			' . $panel['data'] . '
+		</table>';
 	}
 
 	save_panel_result($panel, $user_id);
 }
 
-//------------------------------------ analyse_ds_stats -----------------------------------------------------
+// ------------------------------------ analyse_ds_stats -----------------------------------------------------
+/**
+ * Data-update function for the 'analyse_ds_stat' panel: renders a
+ * summary/graph of data source statistics (e.g. null/all counts) over
+ * the panel's configured timespan. Called from
+ * intropage_gather_stats()/get_panel() via the panel definition's
+ * 'update_func'.
+ *
+ * @param array $panel    The panel's current definition/data row.
+ * @param int   $user_id  The id of the user the panel is being
+ *                        rendered for, used to resolve the timespan
+ *                        setting and save the result.
+ * @param int   $timespan Optional override for the graph's time
+ *                        window in seconds; 0 uses the user's/panel's
+ *                        configured timespan.
+ *
+ * @return void
+ */
 function analyse_ds_stats($panel, $user_id, $timespan = 0) {
 	global $config;
 
 	$panel['alarm'] = 'green';
 
-	$graph = array (
-		'line' => array(
+	$graph =  [
+		'line' => [
 			'title'  => __('DS stats: ', 'intropage'),
-			'label1' => array(),
-			'data1'  => array(),
-			'label2' => array(),
-			'data2'  => array(),
-		),
-	);
+			'label1' => [],
+			'data1'  => [],
+			'label2' => [],
+			'data2'  => [],
+		],
+	];
 
 	if ($timespan == 0) {
 		if (isset($_SESSION['sess_user_id'])) {
-			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), $_SESSION['sess_user_id']);
+			$timespan = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'), false, $_SESSION['sess_user_id']);
 		} else {
 			$timespan = $panel['refresh'];
 		}
@@ -1101,13 +1177,13 @@ function analyse_ds_stats($panel, $user_id, $timespan = 0) {
 		$refresh = db_fetch_cell_prepared('SELECT refresh_interval
 			FROM plugin_intropage_panel_data
 			WHERE id = ?',
-			array($panel['id']));
+			[$panel['id']]);
 	} else {
 		$refresh = $panel['refresh'];
 	}
 
 	if (read_config_option('dsstats_enable') != 'on') {
-		$panel['data'] = __('Panel needs DS stats enabled.', 'intropage') . '<br/>';
+		$panel['data']  = __('Panel needs DS stats enabled.', 'intropage') . '<br/>';
 		$panel['alarm'] = 'grey';
 		unset($graph);
 	} else {
@@ -1116,10 +1192,10 @@ function analyse_ds_stats($panel, $user_id, $timespan = 0) {
 			WHERE cur_timestamp > date_sub(NOW(), INTERVAL ? SECOND)
 			AND name = 'dsstats_all'
 			ORDER BY cur_timestamp ASC",
-			array($timespan));
+			[$timespan]);
 
 		if (cacti_sizeof($rows)) {
-			$graph['line']['title1'] = __('DS all records ', 'intropage');
+			$graph['line']['title1']         = __('DS all records ', 'intropage');
 			$graph['line']['unit1']['title'] = 'All';
 
 			foreach ($rows as $row) {
@@ -1132,10 +1208,10 @@ function analyse_ds_stats($panel, $user_id, $timespan = 0) {
 				WHERE cur_timestamp > date_sub(NOW(), INTERVAL ? SECOND)
 				AND name = 'dsstats_null'
 				ORDER BY cur_timestamp ASC",
-				array($timespan));
+				[$timespan]);
 
 			if (cacti_sizeof($rows)) {
-				$graph['line']['title2'] = __('DS null records ', 'intropage');
+				$graph['line']['title2']         = __('DS null records ', 'intropage');
 				$graph['line']['unit2']['title'] = 'Null';
 
 				foreach ($rows as $row) {
@@ -1159,26 +1235,40 @@ function analyse_ds_stats($panel, $user_id, $timespan = 0) {
 	save_panel_result($panel, $user_id);
 }
 
-
-function ds_stats_trend () {
-
-	$count = db_fetch_cell("SELECT COUNT(*) FROM data_source_stats_hourly_last");
+/**
+ * Trend-collection function for the 'analyse_ds_stat' panel: records a
+ * snapshot of data source statistics (e.g. all/null counts) into
+ * plugin_intropage_trends. Called from intropage_gather_stats() via
+ * the panel definition's 'trends_func'.
+ *
+ * @return void
+ */
+function ds_stats_trend() {
+	$count = db_fetch_cell('SELECT COUNT(*) FROM data_source_stats_hourly_last');
 
 	db_execute_prepared('REPLACE INTO plugin_intropage_trends
 		(name, value, user_id)
 		VALUES (?, ?, 0)',
-		array('dsstats_all', $count));
+		['dsstats_all', $count]);
 
-	$count = db_fetch_cell("SELECT COUNT(*) FROM data_source_stats_hourly_last WHERE value IS NULL");
+	$count = db_fetch_cell('SELECT COUNT(*) FROM data_source_stats_hourly_last WHERE value IS NULL');
 
 	db_execute_prepared('REPLACE INTO plugin_intropage_trends
 		(name, value, user_id)
 		VALUES (?, ?, 0)',
-		array('dsstats_null', $count));
+		['dsstats_null', $count]);
 }
 
-
-//------------------------------------ analyse_log -----------------------------------------------------
+// ------------------------------------ analyse_log -----------------------------------------------------
+/**
+ * Detail-view renderer for the 'analyse_log' panel, showing an
+ * expanded list of the detected log error matches. Called via the
+ * panel definition's 'details_func' when the user opens the panel's
+ * detail view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function analyse_log_detail() {
 	global $log;
 
@@ -1193,19 +1283,19 @@ function analyse_log_detail() {
 		$important_period = time();
 	}
 
-	$panel = array(
+	$panel = [
 		'name'   => __('Analyze Cacti Log Details [ Warnings/Errors ]', 'intropage'),
 		'alarm'  => 'green',
 		'detail' => '',
-	);
+	];
 
-	$log = array(
+	$log = [
 		'file'      => read_config_option('path_cactilog'),
 		'nbr_lines' => read_config_option('intropage_analyse_log_rows'),
-	);
+	];
 
 	$log['size']  = @filesize($log['file']);
-	$log['lines'] = tail_log($log['file'], $log['nbr_lines']*2);
+	$log['lines'] = tail_log($log['file'], $log['nbr_lines'] * 2);
 
 	$panel['detail'] .= '<table class="cactiTable">';
 
@@ -1240,14 +1330,14 @@ function analyse_log_detail() {
 			'</a></td></tr>';
 
 		if ($log['size'] < 0) {
-			$panel['alarm'] = 'red';
+			$panel['alarm']  = 'red';
 			$log_size_text   = __('WARNING: File is Larger than 2GB', 'intropage');
 			$log_size_note   = '';
 		} elseif ($log['size'] < 255999999) {
 			$log_size_text   = human_filesize($log['size']);
 			$log_size_note   = __('Log Size: OK', 'intropage');
 		} else {
-			$panel['alarm'] = 'yellow';
+			$panel['alarm']  = 'yellow';
 			$log_size_text   = human_filesize($log['size']);
 			$log_size_note   = __('Log Size: Quite Large', 'intropage');
 		}
@@ -1258,11 +1348,11 @@ function analyse_log_detail() {
 			$panel['detail'] .= '<tr><td class="txt_med">' . $log_size_note . '<hr></td></tr>';
 		}
 
-		$datechar = array(
+		$datechar = [
 			GDC_HYPHEN => '-',
 			GDC_SLASH  => '/',
 			GDC_DOT    => '.'
-		);
+		];
 
 		$date_fmt        = read_config_option('default_date_format');
 		$dateCharSetting = read_config_option('default_datechar');
@@ -1276,31 +1366,37 @@ function analyse_log_detail() {
 		switch ($date_fmt) {
 			case GD_MO_D_Y:
 				$format = 'm' . $datecharacter . 'd' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_MN_D_Y:
 				$format = 'M' . $datecharacter . 'd' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_D_MO_Y:
 				$format = 'd' . $datecharacter . 'm' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_D_MN_Y:
 				$format = 'd' . $datecharacter . 'M' . $datecharacter . 'Y H:i:s';
+
 				break;
 			case GD_Y_MO_D:
 				$format = 'Y' . $datecharacter . 'm' . $datecharacter . 'd H:i:s';
+
 				break;
 			case GD_Y_MN_D:
 				$format = 'Y' . $datecharacter . 'M' . $datecharacter . 'd H:i:s';
+
 				break;
 			default:
 				$format = 'Y' . $datecharacter . 'm' . $datecharacter . 'd H:i:s';
+
 				break;
 		}
 
 		$count = 0;
 
 		foreach ($log['lines'] as $line) {
-
 			if ($count > 99) {
 				break;
 			}
@@ -1308,13 +1404,12 @@ function analyse_log_detail() {
 			$color = 'grey';
 
 			if (strlen($line) > 3) {
-
 				$date = explode(' - ', $line);
 
-				$d_p = date_parse_from_format($format, $date[0]);
-				$timestamp = mktime ($d_p['hour'], $d_p['minute'], $d_p['second'], $d_p['month'], $d_p['day'], $d_p['year']);
+				$d_p       = date_parse_from_format($format, $date[0]);
+				$timestamp = mktime($d_p['hour'], $d_p['minute'], $d_p['second'], $d_p['month'], $d_p['day'], $d_p['year']);
 
-				if ($timestamp > (time()-($important_period))) {
+				if ($timestamp > (time() - ($important_period))) {
 					if (preg_match('/( ERROR)/', $line)) {
 						$color = 'red';
 					} elseif (preg_match('/( WARNING)/', $line)) {
@@ -1340,7 +1435,16 @@ function analyse_log_detail() {
 	return $panel;
 }
 
-//------------------------------------ analyse_login -----------------------------------------------------
+// ------------------------------------ analyse_login -----------------------------------------------------
+/**
+ * Detail-view renderer for the 'analyse_login' panel, showing an
+ * expanded list of recent login attempts and their analysis. Called
+ * via the panel definition's 'details_func' when the user opens the
+ * panel's detail view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function analyse_login_detail() {
 	global $config;
 
@@ -1357,11 +1461,11 @@ function analyse_login_detail() {
 
 	$lines = 20;
 
-	$panel = array(
+	$panel = [
 		'name'   => __('Analyze Logins Detail', 'intropage'),
 		'alarm'  => 'green',
 		'detail' => '',
-	);
+	];
 
 	$data = db_fetch_assoc('SELECT user_log.username, user_auth.full_name, user_log.time,
 		user_log.result, user_log.ip, UNIX_TIMESTAMP(user_log.time) AS secs
@@ -1374,10 +1478,10 @@ function analyse_login_detail() {
 	if (cacti_sizeof($data)) {
 		$panel['detail'] .= '<table class="cactiTable">' .
 			'<tr class="tableHeader">' .
-				'<th>' . __('Date', 'intropage')       . '</th>' .
+				'<th>' . __('Date', 'intropage') . '</th>' .
 				'<th>' . __('IP Address', 'intropage') . '</th>' .
-				'<th>' . __('User', 'intropage')       . '</th>' .
-				'<th>' . __('Result', 'intropage')     . '</th>' .
+				'<th>' . __('User', 'intropage') . '</th>' .
+				'<th>' . __('Result', 'intropage') . '</th>' .
 			'</tr>';
 
 		foreach ($data as $row) {
@@ -1386,21 +1490,19 @@ function analyse_login_detail() {
 			if ($row['result'] == 0) {
 				$status = __('Failed', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'red';
 				}
-
 			} elseif ($row['result'] == 1) {
 				$status = __('Success - Login', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'green';
 				}
-
 			} else {
 				$status = __('Success - Token', 'intropage');
 
-				if ($row['secs'] > (time()-($important_period))) {
+				if ($row['secs'] > (time() - ($important_period))) {
 					$color = 'green';
 				}
 			}
@@ -1410,7 +1512,7 @@ function analyse_login_detail() {
 				'<td class="left">%s </td>' .
 				'<td class="left">%s </td>' .
 				'<td class="left"><span class="inpa_sq color_' . $color . '"></span>%s</td>' .
-			'</tr>', $row['time'], $row['ip'], $row['username'], $status);
+			'</tr>', $row['time'], html_escape($row['ip']), html_escape($row['username']), $status);
 		}
 
 		$panel['detail'] .= '</table>';
@@ -1440,36 +1542,47 @@ function analyse_login_detail() {
 	return $panel;
 }
 
-//------------------------------------ analyse_tree_host_graph  -----------------------------------------------------
+// ------------------------------------ analyse_tree_host_graph  -----------------------------------------------------
+/**
+ * Detail-view renderer for the 'analyse_tree_host_graph' panel, showing
+ * an expanded breakdown of detected tree/host/graph configuration
+ * issues. Called via the panel definition's 'details_func' when the
+ * user opens the panel's detail view.
+ *
+ * @return array The populated $panel array, including the rendered
+ *               'detail' HTML.
+ */
 function analyse_tree_host_graph_detail() {
 	global $config, $console_access;
 
 	if (isset($_SESSION['sess_user_id'])) {
 		$simple_perms = get_simple_device_perms($_SESSION['sess_user_id']);
+
 		if (!$simple_perms) {
 			$allowed_devices = intropage_get_allowed_devices($_SESSION['sess_user_id']);
-			$host_cond = ' IN (' . $allowed_devices . ')';
+			$host_cond       = ' IN (' . $allowed_devices . ')';
 		} else {
 			$allowed_devices = false;
-			$q_host_cond = '';
+			$q_host_cond     = '';
 		}
 	} else {
-		$admin_user = read_config_option('admin_user');
+		$admin_user   = read_config_option('admin_user');
 		$simple_perms = get_simple_device_perms($admin_user);
+
 		if (!$simple_perms) {
 			$allowed_devices = intropage_get_allowed_devices($admin_user);
-			$host_cond = ' IN (' . $allowed_devices . ')';
+			$host_cond       = ' IN (' . $allowed_devices . ')';
 		} else {
 			$allowed_devices = false;
-			$q_host_cond = '';
+			$q_host_cond     = '';
 		}
 	}
 
-	$panel = array(
+	$panel = [
 		'name'   => __('Analyze Tree, Graphs, Hosts', 'intropage'),
 		'alarm'  => 'green',
 		'detail' => '',
-	);
+	];
 
 	$total_errors = 0;
 
@@ -1494,16 +1607,16 @@ function analyse_tree_host_graph_detail() {
 		if (cacti_sizeof($data)) {
 			$total_errors += $sql_count;
 
-			if ($color == 'red')    {
+			if ($color == 'red') {
 				$panel['alarm'] = 'red';
 			} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 				$panel['alarm'] = 'yellow';
 			}
 
 			foreach ($data as $row) {
-				$sql_hosts = db_fetch_assoc("SELECT id, description, hostname
+				$sql_hosts = db_fetch_assoc('SELECT id, description, hostname
 					FROM host
-					WHERE hostname = " . db_qstr($row['hostname']) . " AND snmp_port=" . $row['snmp_port']);
+					WHERE hostname = ' . db_qstr($row['hostname']) . ' AND snmp_port=' . (int) $row['snmp_port']);
 
 				if (cacti_sizeof($sql_hosts)) {
 					foreach ($sql_hosts as $row2) {
@@ -1534,7 +1647,7 @@ function analyse_tree_host_graph_detail() {
 		$panel['detail'] .= '<h4>' . __('Not optimized Bulk Walk Size devices - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_' . $color . '"></span>';
 
 		if ($sql_count > 0) {
-			$panel['detail'] .= display_tooltip(__('Please have a look to device parameter "Bulk Walk Maximum Repetitions". You can improve your poller performance')) . '<br/>';
+			$panel['detail'] .= display_tooltip(__('Please have a look to device parameter "Bulk Walk Maximum Repetitions". You can improve your poller performance', 'intropage')) . '<br/>';
 		}
 
 		$panel['detail'] .= '</h4>';
@@ -1555,23 +1668,21 @@ function analyse_tree_host_graph_detail() {
 	}
 
 	// last run of reindex, rrdchecker, ...
-	$last_runs = array (
-		'reindex_last_run_time'    => __('Reindex last run'),
-		'rrdcheck_last_run_time'   => __('RRD Checker last run'),
-		'rrdcleaner_last_run_time' => __('RRD Cleaner last run')
-	);
+	$last_runs =  [
+		'reindex_last_run_time'    => __('Reindex last run', 'intropage'),
+		'rrdcheck_last_run_time'   => __('RRD Checker last run', 'intropage'),
+		'rrdcleaner_last_run_time' => __('RRD Cleaner last run', 'intropage')
+	];
 
 	$date_fmt = date_time_format();
 	$tmp_data = '';
-	$color = 'green';
-
+	$color    = 'green';
 
 	foreach ($last_runs as $key => $value) {
-
 		if (config_value_exists($key)) {
 			$last = read_config_option($key);
 
-			if ($last < (time() - 86400*7)) {
+			if ($last < (time() - 86400 * 7)) {
 				if ($color == 'green') {
 					$color = 'yellow';
 				}
@@ -1588,7 +1699,6 @@ function analyse_tree_host_graph_detail() {
 
 	$panel['detail'] .= '<h4>' . __('Data maintenance', 'intropage') . '<span class="inpa_sq color_' . $color . '"></span></h4>';
 	$panel['detail'] .= $tmp_data;
-
 
 	if ($allowed_devices !== false || $simple_perms) {
 		if (!$simple_perms) {
@@ -1664,7 +1774,7 @@ function analyse_tree_host_graph_detail() {
 		$panel['detail'] .= '<h4>' . __('Datasources with bad indexes - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_' . $color . '"></span></h4>';
 
 		if (cacti_sizeof($data)) {
-			if ($color == 'red')    {
+			if ($color == 'red') {
 				$panel['alarm'] = 'red';
 			} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 				$panel['alarm'] = 'yellow';
@@ -1733,8 +1843,6 @@ function analyse_tree_host_graph_detail() {
 		}
 	}
 
-
-
 	if ($allowed_devices !== false || $simple_perms) {
 		if (!$simple_perms) {
 			$q_host_cond = 'AND id ' . $host_cond;
@@ -1756,16 +1864,16 @@ function analyse_tree_host_graph_detail() {
 		if (cacti_sizeof($data)) {
 			$total_errors += $sql_count;
 
-			if ($color == 'red')    {
+			if ($color == 'red') {
 				$panel['alarm'] = 'red';
 			} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 				$panel['alarm'] = 'yellow';
 			}
 
 			foreach ($data as $row) {
-				$sql_hosts = db_fetch_assoc("SELECT id, description, hostname
+				$sql_hosts = db_fetch_assoc('SELECT id, description, hostname
 					FROM host
-					WHERE description = " . db_qstr($row['description']));
+					WHERE description = ' . db_qstr($row['description']));
 
 				if (cacti_sizeof($sql_hosts)) {
 					foreach ($sql_hosts as $row2) {
@@ -1775,7 +1883,6 @@ function analyse_tree_host_graph_detail() {
 			}
 		}
 	}
-
 
 	if ($allowed_devices !== false || $simple_perms) {
 		if (!$simple_perms) {
@@ -1812,16 +1919,17 @@ function analyse_tree_host_graph_detail() {
 					INNER JOIN graph_tree
 					ON (graph_tree_items.graph_tree_id = graph_tree.id)
 					WHERE host.id = ?',
-					array($row['id']));
+					[$row['id']]);
 
 				if (cacti_sizeof($sql_hosts)) {
 					foreach ($sql_hosts as $host) {
 						$parent = $host['parent'];
-						$tree   = $host['name'] . ' / ';
+						$tree   = html_escape($host['name']) . ' / ';
+
 						while ($parent != 0) {
-							$sql_parent = db_fetch_row('SELECT parent, title FROM graph_tree_items WHERE id = ' . $parent);
+							$sql_parent = db_fetch_row_prepared('SELECT parent, title FROM graph_tree_items WHERE id = ?', [(int) $parent]);
 							$parent     = $sql_parent['parent'];
-							$tree .= $sql_parent['title'] . ' / ';
+							$tree .= html_escape($sql_parent['title']) . ' / ';
 						}
 
 						$panel['detail'] .= sprintf('<a class="linkEditMain" href="%stree.php?action=edit&id=%d">Node: %s | Tree: %s</a><br/>', html_escape($config['url_path']), $host['gtid'], html_escape($host['description']), $tree);
@@ -1886,7 +1994,7 @@ function analyse_tree_host_graph_detail() {
 		$panel['detail'] .= '<h4>' . __('Devices without tree - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_' . $color . '"></span></h4>';
 
 		if (cacti_sizeof($data)) {
-			if ($color == 'red')    {
+			if ($color == 'red') {
 				$panel['alarm'] = 'red';
 			} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 				$panel['alarm'] = 'yellow';
@@ -1918,7 +2026,7 @@ function analyse_tree_host_graph_detail() {
 		$panel['detail'] .= '<h4>' . __('Devices with default public/private community - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_' . $color . '"></span></h4>';
 
 		if (cacti_sizeof($data)) {
-			if ($color == 'red')    {
+			if ($color == 'red') {
 				$panel['alarm'] = 'red';
 			} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 				$panel['alarm'] = 'yellow';
@@ -1957,7 +2065,6 @@ function analyse_tree_host_graph_detail() {
 	$panel['detail'] .= '<h4>' . __('Graph items/template items issue - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_red"></span></h4>';
 
 	if (cacti_sizeof($data)) {
-
 		$panel['alarm'] = 'red';
 
 		$panel['detail'] .= '<table class="w60">';
@@ -1968,11 +2075,12 @@ function analyse_tree_host_graph_detail() {
 
 		foreach ($data as $row) {
 			$panel['detail'] .= '<tr><td>';
+
 			if ($console_access) {
 				$panel['detail'] .= '<a class="linkEditMain" href="' . html_escape($config['url_path']) .
-					'graph_templates.php?action=template_edit&id=' . $row['id'] . '">' . $row['name'] . '</a></td>';
+					'graph_templates.php?action=template_edit&id=' . $row['id'] . '">' . html_escape($row['name']) . '</a></td>';
 			} else {
-				$panel['detail'] .= $row['name'] . '</td>';
+				$panel['detail'] .= html_escape($row['name']) . '</td>';
 			}
 			$panel['detail'] .= '<td class="right">' . $row['graphs'] . '</td>';
 			$panel['detail'] .= '<td class="right">' . $row['graph_items'] . '</td>';
@@ -1981,7 +2089,6 @@ function analyse_tree_host_graph_detail() {
 
 		$panel['detail'] .= '</table>';
 	}
-
 
 	// plugin monitor - host without monitoring
 	if (api_plugin_is_enabled('monitor')) {
@@ -2003,7 +2110,7 @@ function analyse_tree_host_graph_detail() {
 			$panel['detail'] .= '<h4>' . __('Plugin Monitor - Unmonitored hosts - %s', $sql_count, 'intropage') . '<span class="inpa_sq color_' . $color . '"></span></h4>';
 
 			if (cacti_sizeof($data)) {
-				if ($color == 'red')    {
+				if ($color == 'red') {
 					$panel['alarm'] = 'red';
 				} elseif ($panel['alarm'] == 'green' && $color == 'yellow') {
 					$panel['alarm'] = 'yellow';
@@ -2017,8 +2124,10 @@ function analyse_tree_host_graph_detail() {
 	}
 
 	$cpu_cores = 0;
+
 	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-		$output = shell_exec("powershell -Command \"Get-WmiObject Win32_Processor | Select-Object NumberOfLogicalProcessors\"");
+		$output = shell_exec('powershell -Command "Get-WmiObject Win32_Processor | Select-Object NumberOfLogicalProcessors"');
+
 		if (!is_null($output) && $output !== false) {
 			preg_match_all('/\d+/', $output, $matches);
 			$cpu_cores = array_sum($matches[0]);
@@ -2032,6 +2141,7 @@ function analyse_tree_host_graph_detail() {
 			$cpu_cores = shell_exec('/bin/nproc');
 		} else {
 			$output = shell_exec('nproc');
+
 			if (!is_null($output) && $output !== false) {
 				$cpu_cores = $output;
 			}
@@ -2039,36 +2149,36 @@ function analyse_tree_host_graph_detail() {
 	}
 	$cpu_cores = trim($cpu_cores);
 
-	$sett = db_fetch_row('SELECT processes, threads FROM poller WHERE id = 1');
+	$sett  = db_fetch_row('SELECT processes, threads FROM poller WHERE id = 1');
 	$color = 'green';
-	$text = __('OK');
+	$text  = __('OK', 'intropage');
 
 	if ($cpu_cores == 0) {
 		if ($sett['processes'] == 1 || $sett['threads'] == 1) {
 			$color = 'yellow';
-			$text = 'Cannot determine number of CPU cores. You have set only 1 process or thread for poller. You may have performance problems.';
+			$text  = 'Cannot determine number of CPU cores. You have set only 1 process or thread for poller. You may have performance problems.';
 		}
 	} elseif ($cpu_cores == 1 && ($sett['processes'] == 1 || $sett['threads'] == 1)) {
-			$color = 'yellow';
-			$text = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
-			$total_errors++;
+		$color = 'yellow';
+		$text  = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
+		$total_errors++;
 	} elseif ($cpu_cores > 1) {
 		if ($sett['processes'] == 1 || $sett['threads'] == 1) {
 			$color = 'red';
-			$text = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
+			$text  = 'You have set only 1 process or thread for poller. You may have performance problems. Try to increase poller processes or threads.';
 			$total_errors++;
-		} elseif ($sett['processes']/$cpu_cores < 0.4 || $sett['threads']/$cpu_cores < 0.4) {
+		} elseif ($sett['processes'] / $cpu_cores < 0.4 || $sett['threads'] / $cpu_cores < 0.4) {
 			$color = 'yellow';
-			$text = 'You are using less than half of CPU cores. For better performance, consider increasing poller processes or threads. ';
+			$text  = 'You are using less than half of CPU cores. For better performance, consider increasing poller processes or threads. ';
 		}
 	}
 
 	$panel['detail'] .= '<span class="inpa_sq color_' . $color . '"></span>' . __('Server CPU cores / processes / threads: %s / %s / %s', $cpu_cores, $sett['processes'], $sett['threads'], 'intropage');
 	$panel['detail'] .= display_tooltip($text) . '<br/>';
 
-	$notify = db_fetch_cell ("SELECT COUNT(*) FROM settings WHERE name = 'notify_admin' AND value='on'");
+	$notify      = db_fetch_cell("SELECT COUNT(*) FROM settings WHERE name = 'notify_admin' AND value='on'");
 	$admin_email = db_fetch_cell("SELECT email_address FROM user_auth WHERE username = 'admin' LIMIT 1");
-	$text = 'Administrator can be notified by email about problems. It is therefore necessary to set the admin account email address and at the same time enable notifications in Settings - Mail/Reporting/DNS';
+	$text        = 'Administrator can be notified by email about problems. It is therefore necessary to set the admin account email address and at the same time enable notifications in Settings - Mail/Reporting/DNS';
 
 	if (!$notify && $admin_email == '') {
 		$panel['detail'] .= '<span class="inpa_sq color_red"></span>' . __('Notify admin is disabled and admin email is not set', 'intropage');
@@ -2079,6 +2189,7 @@ function analyse_tree_host_graph_detail() {
 		$panel['detail'] .= '<span class="inpa_sq color_yellow"></span>' . __('Notify admin is disabled or admin email is not set', 'intropage');
 		$panel['detail'] .= display_tooltip($text) . '<br/>';
 		$total_errors++;
+
 		if ($panel['alarm'] == 'green') {
 			$panel['alarm'] = 'yellow';
 		}
@@ -2092,4 +2203,3 @@ function analyse_tree_host_graph_detail() {
 
 	return $panel;
 }
-

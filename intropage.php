@@ -1,7 +1,7 @@
 <?php
 /* vim: ts=4
  +-------------------------------------------------------------------------+
- | Copyright (C) 2004-2025 The Cacti Group, Inc.                           |
+ | Copyright (C) 2004-2026 The Cacti Group, Inc.                           |
  | Copyright (C) 2004-2025 Petr Macek                                      |
  |                                                                         |
  | This program is free software; you can redistribute it and/or           |
@@ -35,6 +35,7 @@ global $panels, $registry, $login_opts, $callbackPage, $redirectPage;
 $login_opts = get_login_opts(true);
 
 $callbackPage = $config['url_path'] . 'plugins/intropage/intropage.php';
+
 if ($login_opts == 4) {
 	$redirectPage = $config['url_path'] . 'plugins/intropage/intropage.php';
 } else {

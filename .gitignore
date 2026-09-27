@@ -19,6 +19,9 @@
 # | http://www.cacti.net/                                                   |
 # +-------------------------------------------------------------------------+
 
-.git*
 
 locales/po/*.mo
+locales/LC_MESSAGES/*.mo
+
+.phpunit.cache/
+.php-cs-fixer.cache

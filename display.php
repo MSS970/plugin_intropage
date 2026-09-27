@@ -1,7 +1,7 @@
 <?php
 /* vim: ts=4
  +-------------------------------------------------------------------------+
- | Copyright (C) 2004-2025 The Cacti Group, Inc.                           |
+ | Copyright (C) 2004-2026 The Cacti Group, Inc.                           |
  | Copyright (C) 2004-2025 Petr Macek                                      |
  |                                                                         |
  | This program is free software; you can redistribute it and/or           |
@@ -24,6 +24,35 @@
  +-------------------------------------------------------------------------+
 */
 
+/**
+ * Main entry point rendering the Intropage dashboard: applies pending
+ * schema upgrades, initializes the panel library, enforces page
+ * permissions, tracks per-user panel authorization, and renders the
+ * selected theme's panel layout. Called from intropage.php when the
+ * plugin's main page is requested.
+ *
+ * @return bool Always returns true after rendering the page.
+ *
+ * @global array  $config           Cacti global configuration array;
+ *                                  used to include required libraries.
+ * @global string $sql_where        Reserved/declared for use by
+ *                                  included panel-rendering code; not
+ *                                  set directly here.
+ * @global mixed  $callbackPage     Reserved/declared for use by
+ *                                  included panel-rendering code; not
+ *                                  set directly here.
+ * @global mixed  $redirectPage     Reserved/declared for use by
+ *                                  included panel-rendering code; not
+ *                                  set directly here.
+ * @global array  $panels           Populated here with the initialized
+ *                                  panel library definitions.
+ * @global mixed  $registry         Reserved/declared for use by
+ *                                  included panel-rendering code; not
+ *                                  set directly here.
+ * @global array  $trend_timespans  Reserved/declared for use by
+ *                                  included panel-rendering code; not
+ *                                  set directly here.
+ */
 function display_information() {
 	global $config, $sql_where, $callbackPage, $redirectPage, $panels, $registry, $trend_timespans;
 
@@ -52,7 +81,7 @@ function display_information() {
 		db_execute_prepared('INSERT INTO plugin_intropage_user_auth
 			(user_id)
 			VALUES (?)',
-			array($_SESSION['sess_user_id']));
+			[$_SESSION['sess_user_id']]);
 
 		$user_panels = 0;
 	}
@@ -76,25 +105,25 @@ function display_information() {
 	$autorefresh             = read_user_setting('intropage_autorefresh', read_config_option('intropage_autorefresh'));
 	$important_period        = read_user_setting('intropage_important_period', read_config_option('intropage_important_period'));
 	$timespan                = read_user_setting('intropage_timespan', read_config_option('intropage_timespan'));
-	$number_of_lines         = read_user_setting('intropage_number_of_lines', read_config_option('intropage_number_of_lines'));
+	$number_of_lines         = intropage_get_lines($_SESSION['sess_user_id']);
 
 	// number of dashboards
 	$number_of_dashboards = db_fetch_cell_prepared('SELECT COUNT(*)
 		FROM plugin_intropage_dashboard
 		WHERE user_id = ?',
-		array($_SESSION['sess_user_id']));
+		[$_SESSION['sess_user_id']]);
 
 	// console access
 	$console_access = api_plugin_user_realm_auth('index.php');
 
 	// remove admin prohibited panels
-	$panels = db_fetch_assoc_prepared ('SELECT pd.panel_id AS panel_name, pd.id AS id
+	$panels = db_fetch_assoc_prepared('SELECT pd.panel_id AS panel_name, pd.id AS id
 		FROM plugin_intropage_panel_data AS pd
 		INNER JOIN plugin_intropage_panel_dashboard AS pda
 		ON pd.id = pda.panel_id
 		WHERE pda.user_id = ?
 		AND pda.dashboard_id = ?',
-		array($_SESSION['sess_user_id'], $dashboard_id));
+		[$_SESSION['sess_user_id'], $dashboard_id]);
 
 	if (cacti_sizeof($panels)) {
 		$removed = 0;
@@ -107,12 +136,12 @@ function display_information() {
 					WHERE user_id = ?
 					AND dashboard_id = ?
 					AND panel_id = ?',
-					array($_SESSION['sess_user_id'], $dashboard_id, $one['id']));
+					[$_SESSION['sess_user_id'], $dashboard_id, $one['id']]);
 
 				db_execute_prepared('DELETE FROM plugin_intropage_panel_data
 					WHERE user_id = ?
 					AND panel_id = ?',
-					array($_SESSION['sess_user_id'], $one['id']));
+					[$_SESSION['sess_user_id'], $one['id']]);
 
 				$removed++;
 			}
@@ -148,12 +177,12 @@ function display_information() {
 		AND t3.panel_id = 'favourite_graph'
 		AND t3.fav_graph_id IS NOT NULL
 		$sql_order",
-		array(
+		[
 			$_SESSION['sess_user_id'],
 			$dashboard_id,
 			$_SESSION['sess_user_id'],
 			$dashboard_id
-		)
+		]
 	);
 
 	// remove prohibited panels (for common panels (user_id=0))
@@ -162,7 +191,7 @@ function display_information() {
 			$allowed = is_panel_allowed($value['panel_id']);
 
 			if (!$allowed) {
-				unset ($panels[$key]);
+				unset($panels[$key]);
 			} else {
 				// user has permission but no active panel
 				$upanels = db_fetch_cell_prepared('SELECT COUNT(*)
@@ -170,10 +199,10 @@ function display_information() {
 					WHERE user_id = ?
 					AND dashboard_id = ?
 					AND panel_id = ?',
-					array($_SESSION['sess_user_id'], $dashboard_id, $value['id']));
+					[$_SESSION['sess_user_id'], $dashboard_id, $value['id']]);
 
 				if ($upanels == 0) {
-					unset ($panels[$key]);
+					unset($panels[$key]);
 				}
 			}
 		}
@@ -182,15 +211,15 @@ function display_information() {
 	// Notice about disable cacti dashboard
 	if (read_config_option('hide_console') != 'on') {
 		print '<table class="cactiTable"><tr><td class="textAreaNotes">' . __('You can disable rows above in <b>Configure > Settings > General > Hide Cacti Dashboard</b> and use the whole page for Intropage ', 'intropage');
-    print '<a class="pic" href="' . $config['url_path'] . 'settings.php?tab=general&filter=hide"><i class="intro_glyph fas fa-link"></i></a></td></tr></table></br>';
+		print '<a class="pic" href="' . $config['url_path'] . 'settings.php?tab=general&filter=hide"><i class="intro_glyph fas fa-link"></i></a></td></tr></table></br>';
 	}
 
 	$dashboards = array_rekey(
-		db_fetch_assoc_prepared ('SELECT dashboard_id, name
+		db_fetch_assoc_prepared('SELECT dashboard_id, name
 			FROM plugin_intropage_dashboard
 			WHERE user_id = ?
 			ORDER BY dashboard_id',
-			array($_SESSION['sess_user_id'])),
+			[$_SESSION['sess_user_id']]),
 		'dashboard_id', 'name'
 	);
 
@@ -203,18 +232,18 @@ function display_information() {
 		db_execute_prepared('INSERT INTO plugin_intropage_dashboard
 			(user_id, dashboard_id, name)
 			VALUES (?, ?, ?)',
-			array($_SESSION['sess_user_id'], $dashboard_id, $dashboards[1]));
+			[$_SESSION['sess_user_id'], $dashboard_id, $dashboards[1]]);
 	}
 
 	// wide or normal number of panels on line
 	if ($display_wide == 'on') {
 		$width_quarter = 'calc(25% - 1em)';
-		$width_third = 'calc(33% - 1em)';
-		$width_half = 'calc(50% - 1em)';
+		$width_third   = 'calc(33% - 1em)';
+		$width_half    = 'calc(50% - 1em)';
 	} else {
 		$width_quarter = 'calc(33% - 1em)';
-		$width_third = 'calc(50% - 1em)';
-		$width_half = 'calc(66% - 1em)';
+		$width_third   = 'calc(50% - 1em)';
+		$width_half    = 'calc(66% - 1em)';
 	}
 
 	// Intropage Display ----------------------------------
@@ -234,7 +263,7 @@ function display_information() {
 		}
 	}
 
-	print "</ul></nav></div>";
+	print '</ul></nav></div>';
 	print '</div>';
 	print '<div class="float_right">';
 
@@ -254,7 +283,7 @@ function display_information() {
 
 	print "<select id='intropage_action_timespan'>";
 
-	foreach($trend_timespans as $key => $value) {
+	foreach ($trend_timespans as $key => $value) {
 		if ($timespan == $key) {
 			print "<option value='timespan_$key' selected='selected'>" . $value . '</option>';
 		} else {
@@ -262,7 +291,7 @@ function display_information() {
 		}
 	}
 
-	print "</select>";
+	print '</select>';
 	print '&nbsp; &nbsp; ';
 
 	print "<select id='intropage_action'>";
@@ -364,7 +393,6 @@ function display_information() {
 
 	print '<option value="" disabled="disabled">─────────────────────────</option>';
 
-
 	if ($display_important_first == 'on') {
 		print "<option value='important_first' disabled='disabled'>" . __('Sort by Severity', 'intropage') . '</option>';
 		print "<option value='important_no'>" . __('Sort by User Preference', 'intropage') . '</option>';
@@ -412,7 +440,7 @@ function display_information() {
 		(SELECT COUNT(panel_id) FROM plugin_intropage_panel_dashboard WHERE dashboard_id = t2.dashboard_id AND user_id = ?) as panels
 		FROM  plugin_intropage_dashboard AS t2
 		WHERE user_id = ? AND dashboard_id = ?',
-		array ($_SESSION['sess_user_id'], $_SESSION['sess_user_id'], $_SESSION['dashboard_id']));
+		[$_SESSION['sess_user_id'], $_SESSION['sess_user_id'], $_SESSION['dashboard_id']]);
 
 	if (!empty($actual)) {
 		if ($actual['shared']) {
@@ -432,17 +460,16 @@ function display_information() {
 
 	$shared_dashboards = db_fetch_assoc_prepared('SELECT dashboard_id,name,user_id FROM plugin_intropage_dashboard
 		WHERE shared = 1 AND user_id != ?',
-		array ($_SESSION['sess_user_id']));
+		[$_SESSION['sess_user_id']]);
 
 	if (cacti_sizeof($shared_dashboards) > 0) {
-
-		foreach  ($shared_dashboards as $sd) {
-			$text = ' (' . get_username($sd['user_id']) . ' - ' . $sd['name'] . ')' ;
+		foreach ($shared_dashboards as $sd) {
+			$text = ' (' . html_escape(get_username($sd['user_id'])) . ' - ' . html_escape($sd['name']) . ')';
 
 			if ($number_of_dashboards < 9) {
-				print "<option value='useshared_" .  $sd['dashboard_id'] . "_" . $sd['user_id'] . "'>" . __('Use shared dashboard', 'intropage') . $text . '</option>';
+				print "<option value='useshared_" . $sd['dashboard_id'] . '_' . $sd['user_id'] . "'>" . __('Use shared dashboard', 'intropage') . $text . '</option>';
 			} else {
-				print "<option value='useshared_" .  $sd['dashboard_id'] . "_" . $sd['user_id'] . "' disabled='disabled'>" . __('Cannot use shared dashboard - dashboard limit reached.', 'intropage') . $text . '</option>';
+				print "<option value='useshared_" . $sd['dashboard_id'] . '_' . $sd['user_id'] . "' disabled='disabled'>" . __('Cannot use shared dashboard - dashboard limit reached.', 'intropage') . $text . '</option>';
 			}
 		}
 	} else {
@@ -473,32 +500,32 @@ function display_information() {
 		print '<tr class="tableRow">';
 		print '<td class="textAreaNotes top left">' . __('You can Add Dashboard Panels in more ways:', 'intropage');
 		print '<ul>';
-		print '<li>' . __('Select prepared panels from the "Panels menu". Panel can be grayed out. It is due to permissions, ask administrator') . '</li>';
+		print '<li>' . __('Select prepared panels from the "Panels menu". Panel can be grayed out. It is due to permissions, ask administrator', 'intropage') . '</li>';
 		print '<li>' . __('Add any Cacti Graph, use icon', 'intropage') . '<i class="fa fa-eye"></i></li>';
-		print '<li>' . __('You can create own panels. More info in file <cacti_install_dir>/plugins/intropage/panellib/README.md') . '</li>';
+		print '<li>' . __('You can create own panels. More info in file <cacti_install_dir>/plugins/intropage/panellib/README.md', 'intropage') . '</li>';
 		print '</ul><br/>';
 		print '</td></tr>';
 
 		print '<tr class="tableRow">';
 		print '<td class="textAreaNotes top left">' . __('You can share dashboards to other users:', 'intropage');
 		print '<ul>';
-		print '<li>' . __('use "Share this dashboard" option in Actions menu - Every user can use it as template.') . '</li>';
+		print '<li>' . __('use "Share this dashboard" option in Actions menu - Every user can use it as template.', 'intropage') . '</li>';
 		print '</ul><br/>';
 		print '</td></tr>';
 
 		print '<tr class="tableRow">';
 		print '<td class="textAreaNotes top left">' . __('You can use shared dashboard using the Actions menu:', 'intropage');
 		print '<ul>';
-		print '<li>' . __('Use "Use shared dashboard (user/dashboard name) -  It prepares the same dashboard like shared but with your permissions.') . '</li>';
+		print '<li>' . __('Use "Use shared dashboard (user/dashboard name) -  It prepares the same dashboard like shared but with your permissions.', 'intropage') . '</li>';
 		print '</ul><br/>';
 		print '</td></tr>';
 
 		print '<tr class="tableRow">';
 		print '<td class="textAreaNotes top left">' . __('Customization:', 'intropage');
 		print '<ul>';
-		print '<li>' . __('You can create up to 9 dashboards. Every dashboard can be named, use icon') . '<i class="intro_glyph fa fa-cog"></i></li>';
-		print '<li>' . __('Intopage can be displayed in console or in separated tab. You can change it in Action menu') . '</li>';
-		print '<li>' . __('If you want to copy text from panel, you have to disable drag and drop function, use icon') . '<i class="intro_glyph fa fa-clone"></i></li>';
+		print '<li>' . __('You can create up to 9 dashboards. Every dashboard can be named, use icon', 'intropage') . '<i class="intro_glyph fa fa-cog"></i></li>';
+		print '<li>' . __('Intopage can be displayed in console or in separated tab. You can change it in Action menu', 'intropage') . '</li>';
+		print '<li>' . __('If you want to copy text from panel, you have to disable drag and drop function, use icon', 'intropage') . '<i class="intro_glyph fa fa-clone"></i></li>';
 		print '</ul><br/>';
 		print '</td></tr>';
 
@@ -508,16 +535,15 @@ function display_information() {
 	$first_db = db_fetch_cell_prepared('SELECT MIN(IFNULL(dashboard_id, 1))
 		FROM plugin_intropage_dashboard
 		WHERE user_id = ?',
-		array($_SESSION['sess_user_id']));
+		[$_SESSION['sess_user_id']]);
 
 	// extra maint plugin panel - always first
 	if (api_plugin_is_enabled('maint') && (read_config_option('intropage_maint_plugin_days_before') >= 0)) {
-
 		$row = db_fetch_row_prepared("SELECT id, data
 			FROM plugin_intropage_panel_data
 			WHERE panel_id = 'maint'
 			AND user_id = ?",
-			array($_SESSION['sess_user_id']));
+			[$_SESSION['sess_user_id']]);
 
 		if (isset($row['data']) && $row['data'] != null && $dashboard_id == $first_db) {
 			intropage_create_panel($row['id'], $dashboard_id);
@@ -550,32 +576,32 @@ function display_information() {
 
 	var refresh;
 	var pollerRefresh;
-	var intropage_autorefresh = <?php print $autorefresh;?>;
+	var intropage_autorefresh = <?php print $autorefresh; ?>;
 	var intropage_drag = true;
 	var intropage_square = true;
 	var callbackPage = '';
 	var redirectPage = '';
-	var fullPage = <?php print $display_important_first == 'on' ? 'true':'false';?>;
-	var dashboard_id = <?php print $dashboard_id;?>;
-	var intropage_text_panel_details = '<?php print __('Panel Details', 'intropage');?>';
-	var intropage_text_panel_disable = '<?php print __esc('Disable panel move/Enable copy text from panel', 'intropage');?>';
-	var intropage_text_panel_enable = '<?php print __esc('Enable panel move/Disable copy text from panel', 'intropage');?>';
-	var intropage_text_square_disable = '<?php print __esc('Hide red/yellow/green square notifications', 'intropage');?>';
-	var intropage_text_square_enable = '<?php print __esc('Show red/yellow/green square notifications', 'intropage');?>';
+	var fullPage = <?php print $display_important_first == 'on' ? 'true' : 'false'; ?>;
+	var dashboard_id = <?php print $dashboard_id; ?>;
+	var intropage_text_panel_details = '<?php print __('Panel Details', 'intropage'); ?>';
+	var intropage_text_panel_disable = '<?php print __esc('Disable panel move/Enable copy text from panel', 'intropage'); ?>';
+	var intropage_text_panel_enable = '<?php print __esc('Enable panel move/Disable copy text from panel', 'intropage'); ?>';
+	var intropage_text_square_disable = '<?php print __esc('Hide red/yellow/green square notifications', 'intropage'); ?>';
+	var intropage_text_square_enable = '<?php print __esc('Show red/yellow/green square notifications', 'intropage'); ?>';
 
-	var intropage_text_data_error = '<?php print __('Error reading new data', 'intropage');?>';
-	var intropage_text_close = '<?php print __('Close', 'intropage');?>';
+	var intropage_text_data_error = '<?php print __('Error reading new data', 'intropage'); ?>';
+	var intropage_text_close = '<?php print __('Close', 'intropage'); ?>';
 
 	var panels = {};
 
-	var intropage_panel_quarter_width = '<?php echo $width_quarter; ?>';
-	var intropage_panel_third_width = '<?php echo $width_third; ?>';
-	var intropage_panel_half_width = '<?php echo $width_half; ?>';
+	var intropage_panel_quarter_width = '<?php print $width_quarter; ?>';
+	var intropage_panel_third_width = '<?php print $width_third; ?>';
+	var intropage_panel_half_width = '<?php print $width_half; ?>';
 
 	</script>
 
 	<?php
-	print get_md5_include_js($config['base_path'].'/plugins/intropage/include/intropage.js');
+	print get_md5_include_js($config['base_path'] . '/plugins/intropage/include/intropage.js');
 
 	return true;
 }
